@@ -12,6 +12,16 @@ COPY . .
 
 CMD ["air", "-c", ".air.toml"]
 
+# Test stage: used to run unit tests.
+FROM golang:1.26-alpine AS test
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+
+CMD ["go", "test", "./internal/...", "-v"]
+
 # Build stage: used for the production image.
 FROM golang:1.26-alpine AS builder
 

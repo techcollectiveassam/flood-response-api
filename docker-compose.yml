@@ -10,6 +10,11 @@ services:
       APP_ENV: development
       PORT: 8080
       DATABASE_URL: postgres://techcollectiveassam:techcollectiveassam@db:5432/flood_response?sslmode=disable
+      DATABASE_MAX_OPEN_CONNS: 10
+      DATABASE_MAX_IDLE_CONNS: 5
+      DATABASE_CONN_MAX_LIFETIME: 30m
+      DATABASE_CONN_MAX_IDLE_TIME: 5m
+      DATABASE_CONNECT_TIMEOUT: 5s
     volumes:
       - .:/app
       - go_module_cache:/go/pkg/mod
