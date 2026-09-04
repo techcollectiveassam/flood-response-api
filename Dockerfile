@@ -1,4 +1,18 @@
-# Build stage
+# Development stage: used by Docker Compose for live reload.
+FROM golang:1.26-alpine AS development
+
+WORKDIR /app
+
+RUN go install github.com/air-verse/air@v1.67.3
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+CMD ["air", "-c", ".air.toml"]
+
+# Build stage: used for the production image.
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
@@ -13,7 +27,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
     ./cmd/server
 
 # Runtime stage
-FROM alpine:3.23
+FROM alpine:3.23 AS production
 
 RUN apk --no-cache add ca-certificates
 
