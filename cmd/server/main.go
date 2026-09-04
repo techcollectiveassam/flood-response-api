@@ -3,21 +3,24 @@ package main
 import (
 	"log"
 
-	"github.com/gin-gonic/gin"
+	"github.com/techcollectiveassam/flood-response-api/internal/api"
+	"github.com/techcollectiveassam/flood-response-api/internal/app"
 )
 
 func main() {
-	router := gin.Default()
+	application, err := app.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer application.Close()
 
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status": "ok",
-		})
-	})
+	features := app.NewFeatures(application)
 
-	log.Println("server listening on :8080")
+	router := api.NewRouter(features)
 
-	if err := router.Run(":8080"); err != nil {
+	log.Printf("server listening on :%s", application.Config.Port)
+
+	if err := router.Run(":" + application.Config.Port); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -1,0 +1,11 @@
+package affectedarea
+
+import "context"
+
+type mockRepository struct {
+	createErr error
+}
+
+func (m *mockRepository) Create(ctx context.Context, area *AffectedArea) error {
+	return m.createErr
+}
