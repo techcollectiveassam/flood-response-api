@@ -5,16 +5,16 @@ services:
       dockerfile: Dockerfile
       target: development
     ports:
-      - "8080:8080"
+      - "${APP_PORT:-8080}:8080"
     environment:
-      APP_ENV: development
-      PORT: 8080
-      DATABASE_URL: postgres://techcollectiveassam:techcollectiveassam@db:5432/flood_response?sslmode=disable
-      DATABASE_MAX_OPEN_CONNS: 10
-      DATABASE_MAX_IDLE_CONNS: 5
-      DATABASE_CONN_MAX_LIFETIME: 30m
-      DATABASE_CONN_MAX_IDLE_TIME: 5m
-      DATABASE_CONNECT_TIMEOUT: 5s
+      APP_ENV: ${APP_ENV:-development}
+      PORT: ${APP_PORT:-8080}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_MAX_OPEN_CONNS: ${DATABASE_MAX_OPEN_CONNS:-10}
+      DATABASE_MAX_IDLE_CONNS: ${DATABASE_MAX_IDLE_CONNS:-5}
+      DATABASE_CONN_MAX_LIFETIME: ${DATABASE_CONN_MAX_LIFETIME:-30m}
+      DATABASE_CONN_MAX_IDLE_TIME: ${DATABASE_CONN_MAX_IDLE_TIME:-5m}
+      DATABASE_CONNECT_TIMEOUT: ${DATABASE_CONNECT_TIMEOUT:-5s}
     volumes:
       - .:/app
       - go_module_cache:/go/pkg/mod
@@ -26,18 +26,33 @@ services:
   db:
     image: postgis/postgis:16-3.4
     environment:
-      POSTGRES_DB: flood_response
-      POSTGRES_USER: techcollectiveassam
-      POSTGRES_PASSWORD: techcollectiveassam
+      POSTGRES_DB: ${POSTGRES_DB:-flood_response}
+      POSTGRES_USER: ${POSTGRES_USER:-techcollectiveassam}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-techcollectiveassam}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U techcollectiveassam -d flood_response"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-techcollectiveassam} -d ${POSTGRES_DB:-flood_response}"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.goose
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./${MIGRATIONS_DIR:-internal/pkg/database/migrations}:/migrations
+    environment:
+      GOOSE_DRIVER: ${DATABASE_DRIVER:-postgres}
+      GOOSE_DBSTRING: ${DATABASE_URL}
+      GOOSE_MIGRATION_DIR: /migrations
+    profiles: ["tools"]
 
 volumes:
   postgres_data:
