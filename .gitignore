@@ -45,3 +45,6 @@ docker-compose.override.yml
 .postman_collection.json
 .postman_environment.json
 postman
+
+# delve
+__debug*

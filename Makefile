@@ -6,6 +6,27 @@ ifneq (,$(wildcard .env))
 	export
 endif
 
+## --- Application ---
+up: ## Start the application and database
+	docker compose up -d
+
+down: ## Stop the application and database
+	docker compose down
+
+app-up: ## Start the application with Air hot reload
+	docker compose up -d app 
+
+app-down: ## Stop the application and database
+	docker compose down
+
+## --- Debugging ---
+
+debug-up: ## Start the application with Delve debugging enabled
+	docker compose --profile debug up app-debug
+
+debug-down: ## Stop the debug application and database
+	docker compose rm -sf app-debug
+
 ## --- Migrations (Goose, via the `migrate` service in docker-compose.yml) ---
 ## Uses the ghcr.io/pressly/goose image — no local Goose install needed.
 ## `db` must be healthy first; `docker compose run` will wait for it automatically.

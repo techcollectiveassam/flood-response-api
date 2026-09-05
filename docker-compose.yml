@@ -23,6 +23,46 @@ services:
       db:
         condition: service_healthy
 
+   # Debug mode with Delve.
+  app-debug:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+
+    ports:
+      - "${APP_PORT:-8080}:8080"
+      - "${DEBUG_PORT:-40000}:40000"
+
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      PORT: ${APP_PORT:-8080}
+      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_MAX_OPEN_CONNS: ${DATABASE_MAX_OPEN_CONNS:-10}
+      DATABASE_MAX_IDLE_CONNS: ${DATABASE_MAX_IDLE_CONNS:-5}
+      DATABASE_CONN_MAX_LIFETIME: ${DATABASE_CONN_MAX_LIFETIME:-30m}
+      DATABASE_CONN_MAX_IDLE_TIME: ${DATABASE_CONN_MAX_IDLE_TIME:-5m}
+      DATABASE_CONNECT_TIMEOUT: ${DATABASE_CONNECT_TIMEOUT:-5s}
+    volumes:
+      - .:/app
+      - go_module_cache:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+
+    depends_on:
+      db:
+        condition: service_healthy
+    command:
+      [
+        "dlv",
+        "debug",
+        "./cmd/server",
+        "--headless=true",
+        "--listen=:40000",
+        "--api-version=2",
+        "--accept-multiclient"
+      ]
+    profiles: ["debug"]
+
   db:
     image: postgis/postgis:16-3.4
     environment:

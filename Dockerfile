@@ -4,6 +4,7 @@ FROM golang:1.26-alpine AS development
 WORKDIR /app
 
 RUN go install github.com/air-verse/air@v1.67.3
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 COPY go.mod go.sum ./
 RUN go mod download
