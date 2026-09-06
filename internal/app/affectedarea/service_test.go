@@ -22,11 +22,10 @@ func TestCreateAffectedArea(t *testing.T) {
 			name: "success",
 			req: CreateAffectedAreaRequest{
 				Name:        "Flood Zone A",
-				DisasterID:  "disaster-123",
+				DisasterID:  1,
 				Severity:    "high",
 				Description: "Severe flooding",
 				Location:    "26.1445,91.7362",
-				Source:      "satellite",
 			},
 			repoErr: nil,
 			wantErr: false,
@@ -35,12 +34,12 @@ func TestCreateAffectedArea(t *testing.T) {
 			name: "repository error",
 			req: CreateAffectedAreaRequest{
 				Name:       "Flood Zone B",
-				DisasterID: "disaster-456",
+				DisasterID: 2,
 				Severity:   "medium",
 			},
-			repoErr:  ErrNotImplemented,
+			repoErr:  assert.AnError,
 			wantErr:  true,
-			checkErr: ErrNotImplemented,
+			checkErr: assert.AnError,
 		},
 	}
 
@@ -49,15 +48,20 @@ func TestCreateAffectedArea(t *testing.T) {
 			repo := &mockRepository{createErr: tt.repoErr}
 			svc := NewService(repo, logger)
 
-			err := svc.CreateAffectedArea(context.Background(), tt.req)
+			resp, err := svc.CreateAffectedArea(context.Background(), tt.req)
 
 			if tt.wantErr {
 				assert.Error(t, err)
+				assert.Nil(t, resp)
 				if tt.checkErr != nil {
 					assert.ErrorIs(t, err, tt.checkErr)
 				}
 			} else {
 				assert.NoError(t, err)
+				assert.NotNil(t, resp)
+				assert.Equal(t, tt.req.Name, resp.Name)
+				assert.Equal(t, tt.req.DisasterID, resp.DisasterID)
+				assert.Equal(t, tt.req.Severity, resp.Severity)
 			}
 		})
 	}

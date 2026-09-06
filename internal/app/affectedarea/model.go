@@ -4,8 +4,8 @@ type AffectedArea struct {
 	ID          string
 	Name        string
 	Description string
-	DisasterID  string
+	DisasterID  int32
 	Location    string
+	Geometry    string
 	Severity    string
-	Source      string
 }

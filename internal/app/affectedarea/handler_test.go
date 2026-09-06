@@ -25,13 +25,14 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 		body       interface{}
 		repoErr    error
 		wantStatus int
+		wantCode   string
 		wantErr    bool
 	}{
 		{
 			name: "success",
 			body: CreateAffectedAreaRequest{
 				Name:       "Flood Zone A",
-				DisasterID: "disaster-123",
+				DisasterID: 1,
 				Severity:   "high",
 			},
 			repoErr:    nil,
@@ -43,6 +44,7 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 			body:       "invalid",
 			repoErr:    nil,
 			wantStatus: http.StatusBadRequest,
+			wantCode:   "invalid_request_body",
 			wantErr:    true,
 		},
 		{
@@ -52,28 +54,55 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 			},
 			repoErr:    nil,
 			wantStatus: http.StatusBadRequest,
+			wantCode:   "invalid_request_body",
+			wantErr:    true,
+		},
+		{
+			name: "invalid disaster id",
+			body: map[string]interface{}{
+				"name":        "Flood Zone B",
+				"disaster_id": "abc",
+				"severity":    "medium",
+			},
+			repoErr:    nil,
+			wantStatus: http.StatusBadRequest,
+			wantCode:   "invalid_request_body",
+			wantErr:    true,
+		},
+		{
+			name: "invalid severity",
+			body: CreateAffectedAreaRequest{
+				Name:       "Flood Zone B",
+				DisasterID: 1,
+				Severity:   "urgent",
+			},
+			repoErr:    nil,
+			wantStatus: http.StatusBadRequest,
+			wantCode:   "invalid_request_body",
+			wantErr:    true,
+		},
+		{
+			name: "disaster not found",
+			body: CreateAffectedAreaRequest{
+				Name:       "Flood Zone B",
+				DisasterID: 999,
+				Severity:   "medium",
+			},
+			repoErr:    ErrDisasterNotFound,
+			wantStatus: http.StatusNotFound,
+			wantCode:   "disaster_not_found",
 			wantErr:    true,
 		},
 		{
 			name: "service error",
 			body: CreateAffectedAreaRequest{
 				Name:       "Flood Zone B",
-				DisasterID: "disaster-456",
+				DisasterID: 1,
 				Severity:   "medium",
 			},
 			repoErr:    assert.AnError,
 			wantStatus: http.StatusInternalServerError,
-			wantErr:    true,
-		},
-		{
-			name: "not implemented",
-			body: CreateAffectedAreaRequest{
-				Name:       "Flood Zone C",
-				DisasterID: "disaster-789",
-				Severity:   "low",
-			},
-			repoErr:    ErrNotImplemented,
-			wantStatus: http.StatusNotImplemented,
+			wantCode:   "internal_error",
 			wantErr:    true,
 		},
 	}
@@ -104,10 +133,29 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, w.Code)
 
 			if tt.wantErr {
-				var resp map[string]string
+				var resp struct {
+					Error struct {
+						Code    string `json:"code"`
+						Message string `json:"message"`
+					} `json:"error"`
+				}
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.NotEmpty(t, resp["error"])
+				assert.NotEmpty(t, resp.Error.Code)
+				assert.NotEmpty(t, resp.Error.Message)
+				if tt.wantCode != "" {
+					assert.Equal(t, tt.wantCode, resp.Error.Code)
+				}
+			} else {
+				var resp struct {
+					Data map[string]interface{} `json:"data"`
+				}
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.Equal(t, "1", resp.Data["id"])
+				assert.Equal(t, "Flood Zone A", resp.Data["name"])
+				assert.Equal(t, float64(1), resp.Data["disaster_id"])
+				assert.Equal(t, "high", resp.Data["severity"])
 			}
 		})
 	}

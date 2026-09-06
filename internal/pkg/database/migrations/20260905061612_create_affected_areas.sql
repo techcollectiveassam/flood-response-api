@@ -25,7 +25,7 @@ CREATE TABLE affected_areas (
     disaster_id INTEGER NOT NULL REFERENCES disasters(id) ON DELETE CASCADE,
 
     location VARCHAR(500),
-    geom geometry,
+    geom geometry(Geometry, 4326),
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
 

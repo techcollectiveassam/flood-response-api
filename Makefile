@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate
+.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate test
 
 # Load .env so MIGRATIONS_DIR etc. are available if needed locally
 ifneq (,$(wildcard .env))
@@ -53,3 +53,8 @@ migrate-reset: db-up ## Roll back ALL migrations (destructive — dev only)
 
 sqlc-generate: ## Regenerate sqlc code from queries/ and migrations/
 	docker run --rm -v "$(CURDIR):/src" -w /src sqlc/sqlc generate
+
+## --- Testing ---
+
+test: ## Run all Go tests inside the app container
+	docker compose run --rm app go test ./... -v -count=1
