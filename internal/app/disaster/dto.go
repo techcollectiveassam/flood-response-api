@@ -1,6 +1,10 @@
 package disaster
 
-import "time"
+import (
+	"time"
+
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/timeutil"
+)
 
 type CreateDisasterRequest struct {
 	Name        string     `json:"name" binding:"required"`
@@ -29,11 +33,11 @@ func toDisasterResponse(d *Disaster) DisasterResponse {
 		Status:      d.Status,
 	}
 	if d.StartsAt != nil {
-		s := d.StartsAt.Format(time.RFC3339)
+		s := timeutil.FormatUTC(*d.StartsAt)
 		resp.StartsAt = &s
 	}
 	if d.EndsAt != nil {
-		s := d.EndsAt.Format(time.RFC3339)
+		s := timeutil.FormatUTC(*d.EndsAt)
 		resp.EndsAt = &s
 	}
 	return resp

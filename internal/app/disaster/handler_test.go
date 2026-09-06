@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,23 @@ func TestToDisasterResponse(t *testing.T) {
 	assert.Equal(t, d.Status, resp.Status)
 	assert.Nil(t, resp.StartsAt)
 	assert.Nil(t, resp.EndsAt)
+}
+
+func TestToDisasterResponseFormatsUTC(t *testing.T) {
+	startsAt := time.Date(2026, 9, 6, 12, 30, 0, 0, time.FixedZone("IST", 5*3600+30*60))
+	d := &Disaster{
+		ID:       1,
+		Name:     "Assam Flood 2026",
+		Type:     "flood",
+		Status:   "active",
+		StartsAt: &startsAt,
+	}
+
+	resp := toDisasterResponse(d)
+
+	if assert.NotNil(t, resp.StartsAt) {
+		assert.Equal(t, "2026-09-06T07:00:00Z", *resp.StartsAt)
+	}
 }
 
 func TestCreateDisasterHandler(t *testing.T) {

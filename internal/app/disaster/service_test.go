@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -12,11 +13,12 @@ func TestCreateDisaster(t *testing.T) {
 	logger := slog.Default()
 
 	tests := []struct {
-		name     string
-		req      CreateDisasterRequest
-		repoErr  error
-		wantErr  bool
-		checkErr error
+		name         string
+		req          CreateDisasterRequest
+		repoErr      error
+		wantErr      bool
+		checkErr     error
+		wantStartsAt *time.Time
 	}{
 		{
 			name: "success",
@@ -27,6 +29,17 @@ func TestCreateDisaster(t *testing.T) {
 			},
 			repoErr: nil,
 			wantErr: false,
+		},
+		{
+			name: "normalizes timestamps to utc",
+			req: CreateDisasterRequest{
+				Name:     "Earthquake",
+				Type:     "earthquake",
+				StartsAt: utcPtr(time.Date(2026, 9, 6, 12, 30, 0, 0, time.FixedZone("IST", 5*3600+30*60))),
+			},
+			repoErr:      nil,
+			wantErr:      false,
+			wantStartsAt: utcPtr(time.Date(2026, 9, 6, 7, 0, 0, 0, time.UTC)),
 		},
 		{
 			name: "repository error",
@@ -59,7 +72,17 @@ func TestCreateDisaster(t *testing.T) {
 				assert.Equal(t, tt.req.Name, resp.Name)
 				assert.Equal(t, tt.req.Type, resp.Type)
 				assert.Equal(t, StatusActive, resp.Status)
+				if tt.wantStartsAt != nil {
+					if assert.NotNil(t, resp.StartsAt) {
+						assert.Equal(t, tt.wantStartsAt, resp.StartsAt)
+						assert.Equal(t, time.UTC, resp.StartsAt.Location())
+					}
+				}
 			}
 		})
 	}
+}
+
+func utcPtr(t time.Time) *time.Time {
+	return &t
 }

@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+var mockStartsAt = time.Date(2026, 9, 6, 7, 0, 0, 0, time.UTC)
+
 type mockRepository struct {
 	createErr error
 }
@@ -14,8 +16,10 @@ func (m *mockRepository) Create(ctx context.Context, d *Disaster) error {
 		return m.createErr
 	}
 	d.ID = 1
-	t := time.Now()
 	d.Status = "active"
-	d.StartsAt = &t
+	if d.StartsAt == nil {
+		t := mockStartsAt
+		d.StartsAt = &t
+	}
 	return nil
 }

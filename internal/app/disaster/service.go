@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/timeutil"
 )
 
 type Service struct {
@@ -25,8 +26,8 @@ func (s *Service) CreateDisaster(ctx context.Context, req CreateDisasterRequest)
 		Description: req.Description,
 		Type:        req.Type,
 		Status:      StatusActive,
-		StartsAt:    req.StartsAt,
-		EndsAt:      req.EndsAt,
+		StartsAt:    timeutil.UTC(req.StartsAt),
+		EndsAt:      timeutil.UTC(req.EndsAt),
 	}
 
 	if err := s.repository.Create(ctx, d); err != nil {
