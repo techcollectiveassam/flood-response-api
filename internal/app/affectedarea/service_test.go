@@ -58,7 +58,7 @@ func TestCreateAffectedArea(t *testing.T) {
 				}
 			} else {
 				assert.NoError(t, err)
-				assert.NotNil(t, resp)
+				assert.Equal(t, "1", resp.ID)
 				assert.Equal(t, tt.req.Name, resp.Name)
 				assert.Equal(t, tt.req.DisasterID, resp.DisasterID)
 				assert.Equal(t, tt.req.Severity, resp.Severity)

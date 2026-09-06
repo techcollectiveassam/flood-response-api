@@ -18,3 +18,15 @@ type AffectedAreaResponse struct {
 	Geometry    string `json:"geometry,omitempty"`
 	Severity    string `json:"severity"`
 }
+
+func toAffectedAreaResponse(area *AffectedArea) AffectedAreaResponse {
+	return AffectedAreaResponse{
+		ID:          area.ID,
+		Name:        area.Name,
+		Description: area.Description,
+		DisasterID:  area.DisasterID,
+		Location:    area.Location,
+		Geometry:    area.Geometry,
+		Severity:    area.Severity,
+	}
+}

@@ -19,7 +19,7 @@ func NewService(repository Repository, logger *slog.Logger) *Service {
 	}
 }
 
-func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedAreaRequest) (*AffectedAreaResponse, error) {
+func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedAreaRequest) (*AffectedArea, error) {
 	area := &AffectedArea{
 		Name:        req.Name,
 		Description: req.Description,
@@ -36,13 +36,5 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 		return nil, err
 	}
 
-	return &AffectedAreaResponse{
-		ID:          area.ID,
-		Name:        area.Name,
-		Description: area.Description,
-		DisasterID:  area.DisasterID,
-		Location:    area.Location,
-		Geometry:    area.Geometry,
-		Severity:    area.Severity,
-	}, nil
+	return area, nil
 }

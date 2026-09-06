@@ -19,6 +19,28 @@ func setupRouter(handler *Handler) *gin.Engine {
 	return router
 }
 
+func TestToAffectedAreaResponse(t *testing.T) {
+	area := &AffectedArea{
+		"1",
+		"Flood Zone A",
+		"Severe flooding",
+		4,
+		"26.1445,91.7362",
+		"{}",
+		"high",
+	}
+
+	resp := toAffectedAreaResponse(area)
+
+	assert.Equal(t, area.ID, resp.ID)
+	assert.Equal(t, area.Name, resp.Name)
+	assert.Equal(t, area.Description, resp.Description)
+	assert.Equal(t, area.DisasterID, resp.DisasterID)
+	assert.Equal(t, area.Location, resp.Location)
+	assert.Equal(t, area.Geometry, resp.Geometry)
+	assert.Equal(t, area.Severity, resp.Severity)
+}
+
 func TestCreateAffectedAreaHandler(t *testing.T) {
 	tests := []struct {
 		name       string

@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate test
+.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate test verify
 
 # Load .env so MIGRATIONS_DIR etc. are available if needed locally
 ifneq (,$(wildcard .env))
@@ -56,5 +56,8 @@ sqlc-generate: ## Regenerate sqlc code from queries/ and migrations/
 
 ## --- Testing ---
 
-test: ## Run all Go tests inside the app container
-	docker compose run --rm app go test ./... -v -count=1
+test: ## Run all Go tests inside the running app container
+	docker compose exec -T app go test ./... -v -count=1
+
+verify: ## Run format check, build, vet and tests (verbose) inside the running app container
+	docker compose exec -T app sh -c "set -e; echo '== gofmt =='; files=\$$(gofmt -l internal cmd); if [ -n \"\$$files\" ]; then echo 'Unformatted files:'; echo \"\$$files\"; exit 1; fi; echo '== build =='; go build -v ./...; echo '== vet =='; go vet -v ./...; echo '== test =='; go test -v ./... -count=1"

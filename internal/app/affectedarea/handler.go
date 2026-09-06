@@ -29,13 +29,13 @@ func (h *Handler) CreateAffectedArea(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.CreateAffectedArea(c.Request.Context(), req)
+	area, err := h.service.CreateAffectedArea(c.Request.Context(), req)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	response.Data(c, http.StatusCreated, resp)
+	response.Data(c, http.StatusCreated, toAffectedAreaResponse(area))
 }
 
 func validationMessage(err error) string {
