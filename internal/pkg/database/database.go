@@ -2,31 +2,36 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/config"
 )
 
-func New(databaseConfig config.DatabaseConfig) (*sql.DB, error) {
-	db, err := sql.Open(databaseConfig.Driver, databaseConfig.URL)
+func New(databaseConfig config.DatabaseConfig) (*pgxpool.Pool, error) {
+	config, err := pgxpool.ParseConfig(databaseConfig.URL)
 	if err != nil {
-		return nil, fmt.Errorf("open database connection: %w", err)
+		return nil, fmt.Errorf("parse database url: %w", err)
 	}
 
-	db.SetMaxOpenConns(databaseConfig.MaxOpenConns)
-	db.SetMaxIdleConns(databaseConfig.MaxIdleConns)
-	db.SetConnMaxLifetime(databaseConfig.ConnMaxLifetime)
-	db.SetConnMaxIdleTime(databaseConfig.ConnMaxIdleTime)
+	config.MaxConns = int32(databaseConfig.MaxOpenConns)
+	config.MinConns = int32(databaseConfig.MaxIdleConns)
+	config.MaxConnLifetime = databaseConfig.ConnMaxLifetime
+	config.MaxConnIdleTime = databaseConfig.ConnMaxIdleTime
+	config.ConnConfig.ConnectTimeout = databaseConfig.ConnectTimeout
 
 	ctx, cancel := context.WithTimeout(context.Background(), databaseConfig.ConnectTimeout)
 	defer cancel()
 
-	if err := db.PingContext(ctx); err != nil {
-		_ = db.Close()
+	pool, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return nil, fmt.Errorf("create connection pool: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("connect to database: %w", err)
 	}
 
-	return db, nil
+	return pool, nil
 }

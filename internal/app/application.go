@@ -1,17 +1,17 @@
 package app
 
 import (
-	"database/sql"
 	"log"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/config"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
 )
 
 type Application struct {
 	Config *config.Config
-	DB     *sql.DB
+	DB     *pgxpool.Pool
 	Logger *slog.Logger
 }
 
@@ -42,5 +42,6 @@ func (a *Application) Close() error {
 		return nil
 	}
 
-	return a.DB.Close()
+	a.DB.Close()
+	return nil
 }

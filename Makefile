@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up
+.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate
 
 # Load .env so MIGRATIONS_DIR etc. are available if needed locally
 ifneq (,$(wildcard .env))
@@ -48,3 +48,8 @@ migrate-create: ## Create a new migration file: make migrate-create name=create_
 
 migrate-reset: db-up ## Roll back ALL migrations (destructive — dev only)
 	docker compose run --rm migrate reset
+
+## --- SQLC (via the sqlc/sqlc image — no local install needed) ---
+
+sqlc-generate: ## Regenerate sqlc code from queries/ and migrations/
+	docker run --rm -v "$(CURDIR):/src" -w /src sqlc/sqlc generate
