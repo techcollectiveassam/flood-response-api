@@ -29,9 +29,9 @@ func NewRepository(pool *pgxpool.Pool) *PostgresRepository {
 func (r *PostgresRepository) Create(ctx context.Context, area *AffectedArea) error {
 	result, err := r.queries.CreateAffectedArea(ctx, sqlcgen.CreateAffectedAreaParams{
 		Name:        area.Name,
-		Description: nullableString(area.Description),
+		Description: database.NullableString(area.Description),
 		DisasterID:  area.DisasterID,
-		Location:    nullableString(area.Location),
+		Location:    database.NullableString(area.Location),
 		Column5:     area.Geometry,
 		Severity:    sqlcgen.AffectedAreaSeverity(area.Severity),
 	})
@@ -41,26 +41,12 @@ func (r *PostgresRepository) Create(ctx context.Context, area *AffectedArea) err
 
 	area.ID = strconv.FormatInt(result.ID, 10)
 	area.Name = result.Name
-	area.Description = textValue(result.Description)
+	area.Description = database.TextValue(result.Description)
 	area.DisasterID = result.DisasterID
-	area.Location = textValue(result.Location)
+	area.Location = database.TextValue(result.Location)
 	area.Severity = string(result.Severity)
 	if geometry, ok := result.Geometry.(string); ok {
 		area.Geometry = geometry
 	}
 	return nil
-}
-
-func nullableString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
-func textValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }
