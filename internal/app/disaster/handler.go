@@ -1,4 +1,4 @@
-package affectedarea
+package disaster
 
 import (
 	"net/http"
@@ -17,18 +17,18 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-func (h *Handler) CreateAffectedArea(c *gin.Context) {
-	var req CreateAffectedAreaRequest
+func (h *Handler) CreateDisaster(c *gin.Context) {
+	var req CreateDisasterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, apperror.BadRequest("invalid_request_body", validation.Message(err)))
 		return
 	}
 
-	area, err := h.service.CreateAffectedArea(c.Request.Context(), req)
+	d, err := h.service.CreateDisaster(c.Request.Context(), req)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	response.Data(c, http.StatusCreated, toAffectedAreaResponse(area))
+	response.Data(c, http.StatusCreated, toDisasterResponse(d))
 }
