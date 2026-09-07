@@ -86,3 +86,61 @@ func TestCreateDisaster(t *testing.T) {
 func utcPtr(t time.Time) *time.Time {
 	return &t
 }
+
+func TestListDisasters(t *testing.T) {
+	logger := slog.Default()
+
+	tests := []struct {
+		name     string
+		list     []Disaster
+		repoErr  error
+		wantErr  bool
+		wantLen  int
+		checkErr error
+	}{
+		{
+			name: "success",
+			list: []Disaster{
+				{ID: 1, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
+				{ID: 2, Name: "Earthquake", Type: "earthquake", Status: "resolved"},
+			},
+			repoErr: nil,
+			wantErr: false,
+			wantLen: 2,
+		},
+		{
+			name:    "empty",
+			list:    []Disaster{},
+			repoErr: nil,
+			wantErr: false,
+			wantLen: 0,
+		},
+		{
+			name:     "repository error",
+			list:     nil,
+			repoErr:  assert.AnError,
+			wantErr:  true,
+			checkErr: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepository{list: tt.list, listErr: tt.repoErr}
+			svc := NewService(repo, logger)
+
+			resp, err := svc.ListDisasters(context.Background())
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, resp)
+				if tt.checkErr != nil {
+					assert.ErrorIs(t, err, tt.checkErr)
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Len(t, resp, tt.wantLen)
+			}
+		})
+	}
+}

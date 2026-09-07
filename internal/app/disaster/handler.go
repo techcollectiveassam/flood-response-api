@@ -32,3 +32,13 @@ func (h *Handler) CreateDisaster(c *gin.Context) {
 
 	response.Data(c, http.StatusCreated, toDisasterResponse(d))
 }
+
+func (h *Handler) ListDisasters(c *gin.Context) {
+	disasters, err := h.service.ListDisasters(c.Request.Context())
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Data(c, http.StatusOK, toDisasterResponses(disasters))
+}

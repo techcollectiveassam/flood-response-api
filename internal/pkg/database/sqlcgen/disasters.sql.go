@@ -71,3 +71,47 @@ func (q *Queries) CreateDisaster(ctx context.Context, arg CreateDisasterParams) 
 	)
 	return i, err
 }
+
+const listDisasters = `-- name: ListDisasters :many
+SELECT id, name, description, type, status, starts_at, ends_at
+FROM disasters
+ORDER BY starts_at DESC
+`
+
+type ListDisastersRow struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Description *string            `json:"description"`
+	Type        DisasterType       `json:"type"`
+	Status      DisasterStatus     `json:"status"`
+	StartsAt    pgtype.Timestamptz `json:"starts_at"`
+	EndsAt      pgtype.Timestamptz `json:"ends_at"`
+}
+
+func (q *Queries) ListDisasters(ctx context.Context) ([]ListDisastersRow, error) {
+	rows, err := q.db.Query(ctx, listDisasters)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListDisastersRow{}
+	for rows.Next() {
+		var i ListDisastersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Type,
+			&i.Status,
+			&i.StartsAt,
+			&i.EndsAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

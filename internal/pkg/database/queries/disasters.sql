@@ -16,3 +16,8 @@ VALUES (
     $6
 )
 RETURNING id, name, description, type, status, starts_at, ends_at;
+
+-- name: ListDisasters :many
+SELECT id, name, description, type, status, starts_at, ends_at
+FROM disasters
+ORDER BY starts_at DESC;

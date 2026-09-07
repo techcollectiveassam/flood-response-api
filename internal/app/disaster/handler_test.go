@@ -17,6 +17,7 @@ func setupRouter(handler *Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.POST("/disasters", handler.CreateDisaster)
+	router.GET("/disasters", handler.ListDisasters)
 	return router
 }
 
@@ -167,6 +168,89 @@ func TestCreateDisasterHandler(t *testing.T) {
 				assert.Equal(t, "Assam Flood 2026", resp.Data["name"])
 				assert.Equal(t, "flood", resp.Data["type"])
 				assert.Equal(t, "active", resp.Data["status"])
+			}
+		})
+	}
+}
+
+func TestListDisastersHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		list       []Disaster
+		repoErr    error
+		wantStatus int
+		wantCode   string
+		wantLen    int
+		wantErr    bool
+	}{
+		{
+			name: "success",
+			list: []Disaster{
+				{ID: 1, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
+				{ID: 2, Name: "Earthquake", Type: "earthquake", Status: "resolved"},
+			},
+			repoErr:    nil,
+			wantStatus: http.StatusOK,
+			wantErr:    false,
+			wantLen:    2,
+		},
+		{
+			name:       "empty",
+			list:       []Disaster{},
+			repoErr:    nil,
+			wantStatus: http.StatusOK,
+			wantErr:    false,
+			wantLen:    0,
+		},
+		{
+			name:       "service error",
+			list:       nil,
+			repoErr:    assert.AnError,
+			wantStatus: http.StatusInternalServerError,
+			wantCode:   "internal_error",
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepository{list: tt.list, listErr: tt.repoErr}
+			svc := NewService(repo, slog.Default())
+			handler := NewHandler(svc)
+			router := setupRouter(handler)
+
+			req := httptest.NewRequest(http.MethodGet, "/disasters", nil)
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+
+			if tt.wantErr {
+				var resp struct {
+					Error struct {
+						Code    string `json:"code"`
+						Message string `json:"message"`
+					} `json:"error"`
+				}
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.NotEmpty(t, resp.Error.Code)
+				assert.NotEmpty(t, resp.Error.Message)
+				if tt.wantCode != "" {
+					assert.Equal(t, tt.wantCode, resp.Error.Code)
+				}
+			} else {
+				var resp struct {
+					Data []map[string]interface{} `json:"data"`
+				}
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.Len(t, resp.Data, tt.wantLen)
+				if tt.wantLen > 0 {
+					assert.Equal(t, "Assam Flood 2026", resp.Data[0]["name"])
+					assert.Equal(t, "flood", resp.Data[0]["type"])
+				}
 			}
 		})
 	}

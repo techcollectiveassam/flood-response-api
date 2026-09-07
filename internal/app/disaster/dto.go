@@ -42,3 +42,11 @@ func toDisasterResponse(d *Disaster) DisasterResponse {
 	}
 	return resp
 }
+
+func toDisasterResponses(disasters []Disaster) []DisasterResponse {
+	responses := make([]DisasterResponse, 0, len(disasters))
+	for _, d := range disasters {
+		responses = append(responses, toDisasterResponse(&d))
+	}
+	return responses
+}

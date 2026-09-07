@@ -39,3 +39,14 @@ func (s *Service) CreateDisaster(ctx context.Context, req CreateDisasterRequest)
 
 	return d, nil
 }
+
+func (s *Service) ListDisasters(ctx context.Context) ([]Disaster, error) {
+	disasters, err := s.repository.List(ctx)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			s.logger.Error("list disasters", "error", err)
+		}
+		return nil, err
+	}
+	return disasters, nil
+}
