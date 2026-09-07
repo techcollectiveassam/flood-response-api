@@ -50,3 +50,14 @@ func (s *Service) ListDisasters(ctx context.Context) ([]Disaster, error) {
 	}
 	return disasters, nil
 }
+
+func (s *Service) GetDisaster(ctx context.Context, id int32) (*Disaster, error) {
+	d, err := s.repository.GetByID(ctx, id)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			s.logger.Error("get disaster", "error", err)
+		}
+		return nil, err
+	}
+	return d, nil
+}

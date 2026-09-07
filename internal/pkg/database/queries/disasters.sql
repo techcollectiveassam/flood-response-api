@@ -21,3 +21,8 @@ RETURNING id, name, description, type, status, starts_at, ends_at;
 SELECT id, name, description, type, status, starts_at, ends_at
 FROM disasters
 ORDER BY starts_at DESC;
+
+-- name: GetDisaster :one
+SELECT id, name, description, type, status, starts_at, ends_at
+FROM disasters
+WHERE id = $1;

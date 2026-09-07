@@ -18,6 +18,7 @@ func setupRouter(handler *Handler) *gin.Engine {
 	router := gin.New()
 	router.POST("/disasters", handler.CreateDisaster)
 	router.GET("/disasters", handler.ListDisasters)
+	router.GET("/disasters/:id", handler.GetDisaster)
 	return router
 }
 
@@ -251,6 +252,92 @@ func TestListDisastersHandler(t *testing.T) {
 					assert.Equal(t, "Assam Flood 2026", resp.Data[0]["name"])
 					assert.Equal(t, "flood", resp.Data[0]["type"])
 				}
+			}
+		})
+	}
+}
+
+func TestGetDisasterHandler(t *testing.T) {
+	tests := []struct {
+		name       string
+		path       string
+		get        *Disaster
+		repoErr    error
+		notFound   bool
+		wantStatus int
+		wantCode   string
+		wantErr    bool
+	}{
+		{
+			name:       "success",
+			path:       "/disasters/1",
+			get:        &Disaster{ID: 1, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
+			wantStatus: http.StatusOK,
+			wantErr:    false,
+		},
+		{
+			name:       "not found",
+			path:       "/disasters/999",
+			notFound:   true,
+			wantStatus: http.StatusNotFound,
+			wantCode:   "disaster_not_found",
+			wantErr:    true,
+		},
+		{
+			name:       "invalid id",
+			path:       "/disasters/abc",
+			wantStatus: http.StatusBadRequest,
+			wantCode:   "invalid_id",
+			wantErr:    true,
+		},
+		{
+			name:       "service error",
+			path:       "/disasters/1",
+			repoErr:    assert.AnError,
+			wantStatus: http.StatusInternalServerError,
+			wantCode:   "internal_error",
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepository{get: tt.get, getErr: tt.repoErr, getNotFound: tt.notFound}
+			svc := NewService(repo, slog.Default())
+			handler := NewHandler(svc)
+			router := setupRouter(handler)
+
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.wantStatus, w.Code)
+
+			if tt.wantErr {
+				var resp struct {
+					Error struct {
+						Code    string `json:"code"`
+						Message string `json:"message"`
+					} `json:"error"`
+				}
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.NotEmpty(t, resp.Error.Code)
+				assert.NotEmpty(t, resp.Error.Message)
+				if tt.wantCode != "" {
+					assert.Equal(t, tt.wantCode, resp.Error.Code)
+				}
+			} else {
+				var resp struct {
+					Data map[string]interface{} `json:"data"`
+				}
+				err := json.Unmarshal(w.Body.Bytes(), &resp)
+				assert.NoError(t, err)
+				assert.Equal(t, float64(1), resp.Data["id"])
+				assert.Equal(t, "Assam Flood 2026", resp.Data["name"])
+				assert.Equal(t, "flood", resp.Data["type"])
+				assert.Equal(t, "active", resp.Data["status"])
 			}
 		})
 	}

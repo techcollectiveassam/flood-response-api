@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	CreateAffectedArea(ctx context.Context, arg CreateAffectedAreaParams) (CreateAffectedAreaRow, error)
 	CreateDisaster(ctx context.Context, arg CreateDisasterParams) (CreateDisasterRow, error)
+	GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error)
 	ListDisasters(ctx context.Context) ([]ListDisastersRow, error)
 }
 

@@ -72,6 +72,37 @@ func (q *Queries) CreateDisaster(ctx context.Context, arg CreateDisasterParams) 
 	return i, err
 }
 
+const getDisaster = `-- name: GetDisaster :one
+SELECT id, name, description, type, status, starts_at, ends_at
+FROM disasters
+WHERE id = $1
+`
+
+type GetDisasterRow struct {
+	ID          int32              `json:"id"`
+	Name        string             `json:"name"`
+	Description *string            `json:"description"`
+	Type        DisasterType       `json:"type"`
+	Status      DisasterStatus     `json:"status"`
+	StartsAt    pgtype.Timestamptz `json:"starts_at"`
+	EndsAt      pgtype.Timestamptz `json:"ends_at"`
+}
+
+func (q *Queries) GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error) {
+	row := q.db.QueryRow(ctx, getDisaster, id)
+	var i GetDisasterRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.Type,
+		&i.Status,
+		&i.StartsAt,
+		&i.EndsAt,
+	)
+	return i, err
+}
+
 const listDisasters = `-- name: ListDisasters :many
 SELECT id, name, description, type, status, starts_at, ends_at
 FROM disasters

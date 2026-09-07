@@ -144,3 +144,53 @@ func TestListDisasters(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDisaster(t *testing.T) {
+	logger := slog.Default()
+
+	tests := []struct {
+		name     string
+		get      *Disaster
+		repoErr  error
+		notFound bool
+		wantErr  bool
+		checkErr error
+	}{
+		{
+			name:    "success",
+			get:     &Disaster{ID: 1, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
+			wantErr: false,
+		},
+		{
+			name:     "not found",
+			notFound: true,
+			wantErr:  true,
+		},
+		{
+			name:     "repository error",
+			repoErr:  assert.AnError,
+			wantErr:  true,
+			checkErr: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepository{get: tt.get, getErr: tt.repoErr, getNotFound: tt.notFound}
+			svc := NewService(repo, logger)
+
+			resp, err := svc.GetDisaster(context.Background(), 1)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, resp)
+				if tt.checkErr != nil {
+					assert.ErrorIs(t, err, tt.checkErr)
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.get, resp)
+			}
+		})
+	}
+}

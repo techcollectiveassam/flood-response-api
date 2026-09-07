@@ -2,6 +2,7 @@ package disaster
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
@@ -41,4 +42,20 @@ func (h *Handler) ListDisasters(c *gin.Context) {
 	}
 
 	response.Data(c, http.StatusOK, toDisasterResponses(disasters))
+}
+
+func (h *Handler) GetDisaster(c *gin.Context) {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 32)
+	if err != nil {
+		response.Error(c, apperror.BadRequest("invalid_id", "disaster id must be a number"))
+		return
+	}
+
+	d, err := h.service.GetDisaster(c.Request.Context(), int32(id))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Data(c, http.StatusOK, toDisasterResponse(d))
 }
