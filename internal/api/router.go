@@ -15,6 +15,7 @@ func NewRouter(features *app.Features) *gin.Engine {
 
 	v1 := router.Group("/api/v1")
 	features.AffectedArea.RegisterRoutes(v1)
+	features.Disaster.RegisterRoutes(v1)
 
 	return router
 }
