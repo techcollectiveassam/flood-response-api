@@ -200,6 +200,20 @@ type AffectedArea struct {
 	CreatedAt          time.Time                      `json:"created_at"`
 	VerifiedAt         pgtype.Timestamptz             `json:"verified_at"`
 	UpdatedAt          time.Time                      `json:"updated_at"`
+	Centroid           interface{}                    `json:"centroid"`
+	ReportCount        int32                          `json:"report_count"`
+}
+
+type AffectedAreaReport struct {
+	ID              int64                `json:"id"`
+	AreaID          int64                `json:"area_id"`
+	Name            string               `json:"name"`
+	Description     *string              `json:"description"`
+	LocationPayload []byte               `json:"location_payload"`
+	Severity        AffectedAreaSeverity `json:"severity"`
+	ReporterName    *string              `json:"reporter_name"`
+	ReporterMobile  *string              `json:"reporter_mobile"`
+	CreatedAt       time.Time            `json:"created_at"`
 }
 
 type Disaster struct {

@@ -16,36 +16,58 @@ INSERT INTO affected_areas (
     disaster_id,
     location,
     geom,
-    severity
+    latitude,
+    longitude,
+    severity,
+    centroid,
+    verification_status
 )
 VALUES (
     $1,
     $2,
     $3,
     $4,
-    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($5, '')), 4326),
-    $6
+    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($5::text, '')), 4326),
+    $6,
+    $7,
+    $8,
+    COALESCE(
+        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($5::text, '')), 4326)),
+        CASE WHEN ST_MakePoint($7, $6) IS NOT NULL
+             THEN ST_SetSRID(ST_MakePoint($7, $6), 4326)
+        END
+    ),
+    $9
 )
-RETURNING id, name, description, disaster_id, location, COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry, severity
+RETURNING id, name, description, disaster_id, location,
+          COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+          latitude, longitude, severity, verification_status, report_count
 `
 
 type CreateAffectedAreaParams struct {
-	Name        string               `json:"name"`
-	Description *string              `json:"description"`
-	DisasterID  int32                `json:"disaster_id"`
-	Location    *string              `json:"location"`
-	Column5     interface{}          `json:"column_5"`
-	Severity    AffectedAreaSeverity `json:"severity"`
+	Name               string                         `json:"name"`
+	Description        *string                        `json:"description"`
+	DisasterID         int32                          `json:"disaster_id"`
+	Location           *string                        `json:"location"`
+	Column5            string                         `json:"column_5"`
+	Latitude           *float64                       `json:"latitude"`
+	Longitude          *float64                       `json:"longitude"`
+	Severity           AffectedAreaSeverity           `json:"severity"`
+	VerificationStatus AffectedAreaVerificationStatus `json:"verification_status"`
 }
 
 type CreateAffectedAreaRow struct {
-	ID          int64                `json:"id"`
-	Name        string               `json:"name"`
-	Description *string              `json:"description"`
-	DisasterID  int32                `json:"disaster_id"`
-	Location    *string              `json:"location"`
-	Geometry    interface{}          `json:"geometry"`
-	Severity    AffectedAreaSeverity `json:"severity"`
+	ID                 int64                          `json:"id"`
+	Name               string                         `json:"name"`
+	Description        *string                        `json:"description"`
+	DisasterID         int32                          `json:"disaster_id"`
+	Location           *string                        `json:"location"`
+	Geometry           interface{}                    `json:"geometry"`
+	Latitude           *float64                       `json:"latitude"`
+	Longitude          *float64                       `json:"longitude"`
+	Severity           AffectedAreaSeverity           `json:"severity"`
+	VerificationStatus AffectedAreaVerificationStatus `json:"verification_status"`
+	ReportCount        int32                          `json:"report_count"`
 }
 
 func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedAreaParams) (CreateAffectedAreaRow, error) {
@@ -55,7 +77,10 @@ func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedArea
 		arg.DisasterID,
 		arg.Location,
 		arg.Column5,
+		arg.Latitude,
+		arg.Longitude,
 		arg.Severity,
+		arg.VerificationStatus,
 	)
 	var i CreateAffectedAreaRow
 	err := row.Scan(
@@ -65,7 +90,46 @@ func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedArea
 		&i.DisasterID,
 		&i.Location,
 		&i.Geometry,
+		&i.Latitude,
+		&i.Longitude,
 		&i.Severity,
+		&i.VerificationStatus,
+		&i.ReportCount,
 	)
 	return i, err
+}
+
+const incrementReportCount = `-- name: IncrementReportCount :one
+UPDATE affected_areas
+SET report_count = report_count + 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING report_count
+`
+
+func (q *Queries) IncrementReportCount(ctx context.Context, id int64) (int32, error) {
+	row := q.db.QueryRow(ctx, incrementReportCount, id)
+	var report_count int32
+	err := row.Scan(&report_count)
+	return report_count, err
+}
+
+const updateAreaSeverity = `-- name: UpdateAreaSeverity :one
+UPDATE affected_areas
+SET severity = $2::affected_area_severity,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING severity
+`
+
+type UpdateAreaSeverityParams struct {
+	ID      int64                `json:"id"`
+	Column2 AffectedAreaSeverity `json:"column_2"`
+}
+
+func (q *Queries) UpdateAreaSeverity(ctx context.Context, arg UpdateAreaSeverityParams) (AffectedAreaSeverity, error) {
+	row := q.db.QueryRow(ctx, updateAreaSeverity, arg.ID, arg.Column2)
+	var severity AffectedAreaSeverity
+	err := row.Scan(&severity)
+	return severity, err
 }

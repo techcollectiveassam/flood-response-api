@@ -24,11 +24,11 @@ func (h *Handler) CreateAffectedArea(c *gin.Context) {
 		return
 	}
 
-	area, err := h.service.CreateAffectedArea(c.Request.Context(), req)
+	result, err := h.service.CreateAffectedArea(c.Request.Context(), req)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
 
-	response.Data(c, http.StatusCreated, toAffectedAreaResponse(area))
+	response.Data(c, http.StatusCreated, result)
 }
