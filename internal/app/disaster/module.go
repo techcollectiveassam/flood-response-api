@@ -1,4 +1,4 @@
-package affectedarea
+package disaster
 
 import (
 	"log/slog"
@@ -12,7 +12,7 @@ type Module struct {
 
 func New(db *pgxpool.Pool, logger *slog.Logger) *Module {
 	repository := NewRepository(db)
-	service := NewService(repository, NewAffectedAreaResolver(), logger)
+	service := NewService(repository, logger)
 	handler := NewHandler(service)
 	return &Module{handler: handler}
 }
