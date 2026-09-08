@@ -94,7 +94,3 @@ Other rules:
 - **Bugs** — include the request/payload, expected vs. actual behavior, and the API version or commit.
 - **Feature requests** — describe the problem you are trying to solve, not just a proposed solution.
 - **Security vulnerabilities** — do not report them in a public issue. Email the maintainers directly so the disclosure can be handled privately.
-
-## License
-
-By contributing you agree that your contributions are licensed under the [MIT License](LICENSE).
