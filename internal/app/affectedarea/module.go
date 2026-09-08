@@ -12,7 +12,7 @@ type Module struct {
 
 func New(db *pgxpool.Pool, logger *slog.Logger) *Module {
 	repository := NewRepository(db)
-	service := NewService(repository, logger)
+	service := NewService(repository, NewAffectedAreaResolver(), logger)
 	handler := NewHandler(service)
 	return &Module{handler: handler}
 }

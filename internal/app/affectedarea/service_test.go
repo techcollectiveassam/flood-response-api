@@ -8,61 +8,70 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateAffectedArea(t *testing.T) {
-	logger := slog.Default()
+func newTestService(repo *mockRepository) *Service {
+	return NewService(repo, NewAffectedAreaResolver(), slog.Default())
+}
 
+func textRequest() CreateAffectedAreaRequest {
+	return CreateAffectedAreaRequest{
+		DisasterID: 1,
+		Name:       "Possible flooding",
+		Severity:   "medium",
+		Location: LocationPayload{
+			Source:      SourceText,
+			Description: "Village near the old bridge",
+		},
+	}
+}
+
+func floatPointer(value float64) *float64 {
+	return &value
+}
+
+func TestCreateAffectedAreaTextSource(t *testing.T) {
+	repo := &mockRepository{}
+	svc := newTestService(repo)
+	req := textRequest()
+
+	result, err := svc.CreateAffectedArea(context.Background(), req)
+
+	assert.NoError(t, err)
+	assert.True(t, result.IsNewArea)
+	assert.Equal(t, MatchReasonUnmatchable, result.MatchReason)
+	assert.Equal(t, 0.0, result.Confidence)
+
+	area := repo.createdArea
+	assert.NotNil(t, area)
+	assert.Equal(t, "Village near the old bridge", area.Location)
+	assert.Equal(t, "", area.Geometry)
+	assert.Equal(t, StatusReported, area.VerificationStatus)
+	assert.Equal(t, int64(1), area.ReportCount)
+	assert.Nil(t, area.Latitude)
+	assert.Nil(t, area.Longitude)
+
+	report := repo.createdReport
+	assert.NotNil(t, report)
+	assert.Equal(t, area.ID, report.AreaID)
+	assert.Equal(t, "medium", report.Severity)
+	assert.Empty(t, report.ReporterName)
+	assert.Empty(t, report.ReporterMobile)
+}
+
+func TestUpdateAreaSeverity(t *testing.T) {
 	tests := []struct {
-		name     string
-		req      CreateAffectedAreaRequest
-		repoErr  error
-		wantErr  bool
-		checkErr error
+		name      string
+		candidate string
+		current   string
+		want      bool
 	}{
-		{
-			name: "success",
-			req: CreateAffectedAreaRequest{
-				Name:        "Flood Zone A",
-				DisasterID:  1,
-				Severity:    "high",
-				Description: "Severe flooding",
-				Location:    "26.1445,91.7362",
-			},
-			repoErr: nil,
-			wantErr: false,
-		},
-		{
-			name: "repository error",
-			req: CreateAffectedAreaRequest{
-				Name:       "Flood Zone B",
-				DisasterID: 2,
-				Severity:   "medium",
-			},
-			repoErr:  assert.AnError,
-			wantErr:  true,
-			checkErr: assert.AnError,
-		},
+		{name: "higher", candidate: "critical", current: "medium", want: true},
+		{name: "equal", candidate: "medium", current: "medium", want: false},
+		{name: "lower", candidate: "low", current: "high", want: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &mockRepository{createErr: tt.repoErr}
-			svc := NewService(repo, logger)
-
-			resp, err := svc.CreateAffectedArea(context.Background(), tt.req)
-
-			if tt.wantErr {
-				assert.Error(t, err)
-				assert.Nil(t, resp)
-				if tt.checkErr != nil {
-					assert.ErrorIs(t, err, tt.checkErr)
-				}
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, "1", resp.ID)
-				assert.Equal(t, tt.req.Name, resp.Name)
-				assert.Equal(t, tt.req.DisasterID, resp.DisasterID)
-				assert.Equal(t, tt.req.Severity, resp.Severity)
-			}
+			assert.Equal(t, tt.want, severityHigher(tt.candidate, tt.current))
 		})
 	}
 }
