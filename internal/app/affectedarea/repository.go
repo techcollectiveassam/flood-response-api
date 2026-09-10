@@ -32,6 +32,10 @@ func NewRepository(pool *pgxpool.Pool) *PostgresRepository {
 }
 
 func (r *PostgresRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
+	if r.pool == nil {
+		return apperror.Internal("nested_transaction", "WithTx cannot be called inside an existing transaction")
+	}
+
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -42,7 +46,7 @@ func (r *PostgresRepository) WithTx(ctx context.Context, fn func(Repository) err
 		return err
 	}
 
-	return tx.Commit(ctx)
+	return database.TranslateError(tx.Commit(ctx))
 }
 
 func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea) error {
