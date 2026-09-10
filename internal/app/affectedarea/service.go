@@ -29,11 +29,14 @@ func NewService(repository Repository, resolver *AffectedAreaResolver, logger *s
 }
 
 func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedAreaRequest) (*CreateAffectedAreaResponse, error) {
+	if req.Location == nil {
+		return nil, apperror.BadRequest("invalid_location", "location is required")
+	}
 	if err := req.Location.Validate(); err != nil {
 		return nil, err
 	}
 
-	resolved, err := s.resolver.Resolve(ctx, req.DisasterID, req.Location)
+	resolved, err := s.resolver.Resolve(ctx, req.DisasterID, *req.Location)
 	if err != nil {
 		if apperror.HTTPStatus(err) >= 500 {
 			s.logger.Error("resolve affected area", "error", err)
@@ -59,7 +62,7 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 			AreaID:          area.ID,
 			Name:            req.Name,
 			Description:     req.Description,
-			LocationPayload: locationPayloadJSON(req.Location),
+			LocationPayload: locationPayloadJSON(*req.Location),
 			Severity:        req.Severity,
 			ReporterName:    reporterName(req.Reporter),
 			ReporterMobile:  reporterMobile(req.Reporter),
@@ -110,8 +113,8 @@ func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, 
 		Name:               req.Name,
 		Description:        req.Description,
 		DisasterID:         req.DisasterID,
-		Location:           locationLabel(req.Location),
-		Geometry:           locationGeometry(req.Location),
+		Location:           locationLabel(*req.Location),
+		Geometry:           locationGeometry(*req.Location),
 		Latitude:           req.Location.Latitude,
 		Longitude:          req.Location.Longitude,
 		Severity:           req.Severity,

@@ -51,12 +51,12 @@ type Reporter struct {
 }
 
 type CreateAffectedAreaRequest struct {
-	DisasterID  int32           `json:"disaster_id" binding:"required"`
-	Name        string          `json:"name" binding:"required"`
-	Description string          `json:"description"`
-	Location    LocationPayload `json:"location" binding:"required"`
-	Severity    string          `json:"severity" binding:"required,oneof=low medium high critical"`
-	Reporter    *Reporter       `json:"reporter"`
+	DisasterID  int32            `json:"disaster_id" binding:"required"`
+	Name        string           `json:"name" binding:"required"`
+	Description string           `json:"description"`
+	Location    *LocationPayload `json:"location" binding:"required"`
+	Severity    string           `json:"severity" binding:"required,oneof=low medium high critical"`
+	Reporter    *Reporter        `json:"reporter"`
 }
 
 type AffectedAreaResponse struct {

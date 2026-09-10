@@ -21,7 +21,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) CreateDisaster(c *gin.Context) {
 	var req CreateDisasterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, apperror.BadRequest("invalid_request_body", validation.Message(err)))
+		response.Error(c, apperror.BadRequest("invalid_request_body", validation.MessageValidationFailed).WithDetails(validation.Details(err)))
 		return
 	}
 

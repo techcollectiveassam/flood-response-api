@@ -7,10 +7,16 @@ import (
 
 const CodeInternalError = "internal_error"
 
+type Detail struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
 type Error struct {
 	Code    string
 	Status  int
 	Message string
+	Details []Detail
 	cause   error
 }
 
@@ -42,6 +48,11 @@ func (e *Error) Error() string {
 	return e.Message
 }
 
+func (e *Error) WithDetails(details []Detail) *Error {
+	e.Details = details
+	return e
+}
+
 func (e *Error) Unwrap() error {
 	return e.cause
 }
@@ -68,4 +79,12 @@ func Message(err error) string {
 		return appErr.Message
 	}
 	return "internal server error"
+}
+
+func Details(err error) []Detail {
+	var appErr *Error
+	if errors.As(err, &appErr) {
+		return appErr.Details
+	}
+	return nil
 }
