@@ -15,6 +15,10 @@ type mockRepository struct {
 	increments      []int64
 }
 
+func (m *mockRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
+	return fn(m)
+}
+
 func (m *mockRepository) CreateArea(ctx context.Context, area *AffectedArea) error {
 	if m.createAreaErr != nil {
 		return m.createAreaErr

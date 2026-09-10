@@ -12,6 +12,7 @@ import (
 var ErrDisasterNotFound = apperror.NotFound("disaster_not_found", "disaster not found")
 
 type Repository interface {
+	WithTx(ctx context.Context, fn func(Repository) error) error
 	CreateArea(ctx context.Context, area *AffectedArea) error
 	CreateReport(ctx context.Context, report *AffectedAreaReport) error
 	UpdateAreaSeverity(ctx context.Context, id int64, severity string) error
@@ -19,13 +20,29 @@ type Repository interface {
 }
 
 type PostgresRepository struct {
+	pool    *pgxpool.Pool
 	queries *sqlcgen.Queries
 }
 
 func NewRepository(pool *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{
+		pool:    pool,
 		queries: sqlcgen.New(pool),
 	}
+}
+
+func (r *PostgresRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	if err := fn(&PostgresRepository{queries: sqlcgen.New(tx)}); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea) error {
