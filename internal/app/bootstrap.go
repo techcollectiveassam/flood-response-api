@@ -19,7 +19,6 @@ func NewFeatures(application *Application) *Features {
 		),
 		Disaster: disaster.New(
 			application.DB,
-			application.Logger,
 		),
 	}
 }

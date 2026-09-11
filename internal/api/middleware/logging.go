@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/techcollectiveassam/flood-response-api/internal/pkg/sloglog"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 )
 
 func LoggingMiddleware(logger *slog.Logger) gin.HandlerFunc {
@@ -19,7 +19,7 @@ func LoggingMiddleware(logger *slog.Logger) gin.HandlerFunc {
 		c.Header("X-Request-Id", requestID)
 
 		loggerWithID := logger.With("request_id", requestID)
-		c.Request = c.Request.WithContext(sloglog.WithContext(c.Request.Context(), loggerWithID))
+		c.Request = c.Request.WithContext(logging.WithContext(c.Request.Context(), loggerWithID))
 
 		c.Next()
 

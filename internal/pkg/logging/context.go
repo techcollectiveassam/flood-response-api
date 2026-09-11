@@ -1,4 +1,4 @@
-package sloglog
+package logging
 
 import (
 	"context"
@@ -11,7 +11,7 @@ func WithContext(ctx context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(ctx, contextKey{}, logger)
 }
 
-func LoggerFromContext(ctx context.Context) *slog.Logger {
+func FromContext(ctx context.Context) *slog.Logger {
 	if logger, ok := ctx.Value(contextKey{}).(*slog.Logger); ok {
 		return logger
 	}
