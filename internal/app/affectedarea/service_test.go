@@ -17,7 +17,7 @@ func textRequest() CreateAffectedAreaRequest {
 		DisasterID: 1,
 		Name:       "Possible flooding",
 		Severity:   "medium",
-		Location: LocationPayload{
+		Location: &LocationPayload{
 			Source:      SourceText,
 			Description: "Village near the old bridge",
 		},

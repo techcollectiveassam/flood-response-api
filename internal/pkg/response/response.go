@@ -10,10 +10,12 @@ func Data(c *gin.Context, status int, data any) {
 }
 
 func Error(c *gin.Context, err error) {
-	c.JSON(apperror.HTTPStatus(err), gin.H{
-		"error": gin.H{
-			"code":    apperror.Code(err),
-			"message": apperror.Message(err),
-		},
-	})
+	body := gin.H{
+		"code":    apperror.Code(err),
+		"message": apperror.Message(err),
+	}
+	if details := apperror.Details(err); len(details) > 0 {
+		body["details"] = details
+	}
+	c.JSON(apperror.HTTPStatus(err), gin.H{"error": body})
 }

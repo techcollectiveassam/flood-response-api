@@ -8,7 +8,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/validation"
 )
 
 func setupRouter(handler *Handler) *gin.Engine {
@@ -16,6 +21,45 @@ func setupRouter(handler *Handler) *gin.Engine {
 	router := gin.New()
 	router.POST("/affected-areas", handler.CreateAffectedArea)
 	return router
+}
+
+func registerJSONTagNames(t *testing.T) {
+	t.Helper()
+	v, ok := binding.Validator.Engine().(*validator.Validate)
+	require.True(t, ok)
+	validation.RegisterJSONTagNames(v)
+}
+
+func TestCreateAffectedAreaValidationDetails(t *testing.T) {
+	registerJSONTagNames(t)
+	svc := newTestService(&mockRepository{})
+	handler := NewHandler(svc)
+	router := setupRouter(handler)
+
+	req := httptest.NewRequest(http.MethodPost, "/affected-areas", bytes.NewBufferString(`{}`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp struct {
+		Error struct {
+			Code    string            `json:"code"`
+			Message string            `json:"message"`
+			Details []apperror.Detail `json:"details"`
+		} `json:"error"`
+	}
+	err := json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "invalid_request_body", resp.Error.Code)
+	assert.Equal(t, "validation error", resp.Error.Message)
+	assert.Equal(t, []apperror.Detail{
+		{Field: "disaster_id", Message: "disaster_id is required"},
+		{Field: "name", Message: "name is required"},
+		{Field: "location", Message: "location is required"},
+		{Field: "severity", Message: "severity is required"},
+	}, resp.Error.Details)
 }
 
 func TestToAffectedAreaResponse(t *testing.T) {
@@ -100,7 +144,7 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 				Name:       "Flood Zone C",
 				DisasterID: 1,
 				Severity:   "medium",
-				Location: LocationPayload{
+				Location: &LocationPayload{
 					Source:    SourceGPS,
 					Latitude:  floatPointer(26.1445),
 					Longitude: nil,

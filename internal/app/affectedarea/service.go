@@ -29,11 +29,14 @@ func NewService(repository Repository, resolver *AffectedAreaResolver, logger *s
 }
 
 func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedAreaRequest) (*CreateAffectedAreaResponse, error) {
+	if req.Location == nil {
+		return nil, apperror.BadRequest("invalid_location", "location is required")
+	}
 	if err := req.Location.Validate(); err != nil {
 		return nil, err
 	}
 
-	resolved, err := s.resolver.Resolve(ctx, req.DisasterID, req.Location)
+	resolved, err := s.resolver.Resolve(ctx, req.DisasterID, *req.Location)
 	if err != nil {
 		if apperror.HTTPStatus(err) >= 500 {
 			s.logger.Error("resolve affected area", "error", err)
@@ -41,27 +44,39 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 		return nil, err
 	}
 
-	area, err := s.ensureArea(ctx, req, resolved)
-	if err != nil {
-		if apperror.HTTPStatus(err) >= 500 {
-			s.logger.Error("ensure affected area", "error", err)
-		}
-		return nil, err
-	}
+	var (
+		area   *AffectedArea
+		report *AffectedAreaReport
+	)
 
-	report := &AffectedAreaReport{
-		AreaID:          area.ID,
-		Name:            req.Name,
-		Description:     req.Description,
-		LocationPayload: locationPayloadJSON(req.Location),
-		Severity:        req.Severity,
-		ReporterName:    reporterName(req.Reporter),
-		ReporterMobile:  reporterMobile(req.Reporter),
-	}
-	if err := s.repository.CreateReport(ctx, report); err != nil {
-		if apperror.HTTPStatus(err) >= 500 {
-			s.logger.Error("create affected area report", "error", err)
+	err = s.repository.WithTx(ctx, func(repository Repository) error {
+		area, err = s.matchOrCreateArea(ctx, repository, req, resolved)
+		if err != nil {
+			if apperror.HTTPStatus(err) >= 500 {
+				s.logger.Error("ensure affected area", "error", err)
+			}
+			return err
 		}
+
+		report = &AffectedAreaReport{
+			AreaID:          area.ID,
+			Name:            req.Name,
+			Description:     req.Description,
+			LocationPayload: locationPayloadJSON(*req.Location),
+			Severity:        req.Severity,
+			ReporterName:    reporterName(req.Reporter),
+			ReporterMobile:  reporterMobile(req.Reporter),
+		}
+		if err := repository.CreateReport(ctx, report); err != nil {
+			if apperror.HTTPStatus(err) >= 500 {
+				s.logger.Error("create affected area report", "error", err)
+			}
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -74,15 +89,15 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 	}, nil
 }
 
-func (s *Service) ensureArea(ctx context.Context, req CreateAffectedAreaRequest, resolved *ResolvedArea) (*AffectedArea, error) {
+func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, req CreateAffectedAreaRequest, resolved *ResolvedArea) (*AffectedArea, error) {
 	if resolved.Decision == DecisionMatched && resolved.Area != nil {
 		if severityHigher(req.Severity, resolved.Area.Severity) {
-			if err := s.repository.UpdateAreaSeverity(ctx, resolved.Area.ID, req.Severity); err != nil {
+			if err := repository.UpdateAreaSeverity(ctx, resolved.Area.ID, req.Severity); err != nil {
 				return nil, err
 			}
 			resolved.Area.Severity = req.Severity
 		}
-		if err := s.repository.IncrementReportCount(ctx, resolved.Area.ID); err != nil {
+		if err := repository.IncrementReportCount(ctx, resolved.Area.ID); err != nil {
 			return nil, err
 		}
 		resolved.Area.ReportCount++
@@ -98,18 +113,18 @@ func (s *Service) ensureArea(ctx context.Context, req CreateAffectedAreaRequest,
 		Name:               req.Name,
 		Description:        req.Description,
 		DisasterID:         req.DisasterID,
-		Location:           locationLabel(req.Location),
-		Geometry:           locationGeometry(req.Location),
+		Location:           locationLabel(*req.Location),
+		Geometry:           locationGeometry(*req.Location),
 		Latitude:           req.Location.Latitude,
 		Longitude:          req.Location.Longitude,
 		Severity:           req.Severity,
 		VerificationStatus: verificationStatus,
 	}
 
-	if err := s.repository.CreateArea(ctx, area); err != nil {
+	if err := repository.CreateArea(ctx, area); err != nil {
 		return nil, err
 	}
-	if err := s.repository.IncrementReportCount(ctx, area.ID); err != nil {
+	if err := repository.IncrementReportCount(ctx, area.ID); err != nil {
 		return nil, err
 	}
 	area.ReportCount = 1

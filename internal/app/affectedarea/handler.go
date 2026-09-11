@@ -20,7 +20,7 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) CreateAffectedArea(c *gin.Context) {
 	var req CreateAffectedAreaRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, apperror.BadRequest("invalid_request_body", validation.Message(err)))
+		response.Error(c, apperror.BadRequest("invalid_request_body", validation.MessageValidationFailed).WithDetails(validation.Details(err)))
 		return
 	}
 
