@@ -25,7 +25,7 @@ func main() {
 
 	features := app.NewFeatures(application)
 
-	router := api.NewRouter(features)
+	router := api.NewRouter(features, application.Logger)
 
 	server := &http.Server{
 		Addr:    ":" + application.Config.Port,

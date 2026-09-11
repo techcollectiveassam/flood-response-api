@@ -15,8 +15,9 @@ import (
 func newTestRouter(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	features := app.NewFeatures(&app.Application{Logger: slog.Default()})
-	return NewRouter(features)
+	logger := slog.Default()
+	features := app.NewFeatures(&app.Application{Logger: logger})
+	return NewRouter(features, logger)
 }
 
 func TestHealthEndpoint(t *testing.T) {
