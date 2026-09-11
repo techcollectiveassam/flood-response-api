@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -11,6 +12,12 @@ type Config struct {
 	Environment string
 	Port        string
 	Database    DatabaseConfig
+	Logger      LoggerConfig
+}
+
+type LoggerConfig struct {
+	Level  string
+	Format string
 }
 
 type DatabaseConfig struct {
@@ -34,10 +41,16 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	loggerConfig, err := loadLoggerConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Environment: valueOrDefault("APP_ENV", "development"),
 		Port:        valueOrDefault("PORT", "8080"),
 		Database:    databaseConfig,
+		Logger:      loggerConfig,
 	}, nil
 }
 
@@ -107,4 +120,26 @@ func durationValue(key string, fallback time.Duration) (time.Duration, error) {
 	}
 
 	return parsed, nil
+}
+
+var validLogLevels = map[string]bool{
+	"debug": true, "info": true, "warn": true, "error": true,
+}
+
+var validLogFormats = map[string]bool{
+	"json": true, "text": true,
+}
+
+func loadLoggerConfig() (LoggerConfig, error) {
+	level := strings.ToLower(valueOrDefault("LOG_LEVEL", "info"))
+	if !validLogLevels[level] {
+		return LoggerConfig{}, fmt.Errorf("LOG_LEVEL must be one of: debug, info, warn, error")
+	}
+
+	format := strings.ToLower(valueOrDefault("LOG_FORMAT", "json"))
+	if !validLogFormats[format] {
+		return LoggerConfig{}, fmt.Errorf("LOG_FORMAT must be one of: json, text")
+	}
+
+	return LoggerConfig{Level: level, Format: format}, nil
 }

@@ -1,12 +1,12 @@
 package app
 
 import (
-	"log"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/config"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 )
 
 type Application struct {
@@ -26,14 +26,10 @@ func New() (*Application, error) {
 		return nil, err
 	}
 
-	logger := slog.New(slog.NewJSONHandler(log.Writer(), &slog.HandlerOptions{
-		AddSource: true,
-	}))
-
 	return &Application{
 		Config: configuration,
 		DB:     db,
-		Logger: logger,
+		Logger: logging.New(configuration.Logger),
 	}, nil
 }
 
