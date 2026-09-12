@@ -8,12 +8,14 @@ type mockRepository struct {
 	updateSeverityErr error
 	incrementErr      error
 	listErr           error
+	getErr            error
 
 	createdArea   *AffectedArea
 	createdReport *AffectedAreaReport
 
-	listAreas []*AffectedArea
-	listTotal int64
+	listAreas   []*AffectedArea
+	listTotal   int64
+	getAffected *AffectedArea
 
 	severityUpdates []string
 	increments      []int64
@@ -70,4 +72,14 @@ func (m *mockRepository) ListAffectedAreas(ctx context.Context, page, limit int)
 		return nil, 0, m.listErr
 	}
 	return m.listAreas, m.listTotal, nil
+}
+
+func (m *mockRepository) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
+	if m.getErr != nil {
+		return nil, m.getErr
+	}
+	if m.getAffected == nil {
+		return nil, ErrAffectedAreaNotFound
+	}
+	return m.getAffected, nil
 }

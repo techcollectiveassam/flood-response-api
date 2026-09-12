@@ -54,3 +54,10 @@ SELECT id, name, description, disaster_id, location,
 FROM affected_areas
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
+
+-- name: GetAffectedArea :one
+SELECT id, name, description, disaster_id, location,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       latitude, longitude, severity, verification_status, report_count
+FROM affected_areas
+WHERE id = $1;

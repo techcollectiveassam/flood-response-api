@@ -2,6 +2,7 @@ package affectedarea
 
 import (
 	"context"
+	"errors"
 
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
@@ -174,4 +175,21 @@ func (s *Service) ListAffectedAreas(ctx context.Context, page, limit int) (*List
 
 	logger.Debug("affected areas listed", "count", len(areas), "total", total)
 	return &ListAffectedAreasResult{Areas: areas, Total: total}, nil
+}
+
+func (s *Service) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
+	logger := logging.FromContext(ctx)
+
+	area, err := s.repository.GetAffectedArea(ctx, id)
+	if err != nil {
+		if errors.Is(err, ErrAffectedAreaNotFound) {
+			logger.Warn("affected area not found", "id", id)
+		} else if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("get affected area", "id", id, "error", err)
+		}
+		return nil, err
+	}
+
+	logger.Debug("affected area found", "id", id)
+	return area, nil
 }

@@ -2,14 +2,19 @@ package affectedarea
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database/sqlcgen"
 )
 
-var ErrDisasterNotFound = apperror.NotFound("disaster_not_found", "disaster not found")
+var (
+	ErrDisasterNotFound     = apperror.NotFound("disaster_not_found", "disaster not found")
+	ErrAffectedAreaNotFound = apperror.NotFound("affected_area_not_found", "affected area not found")
+)
 
 type Repository interface {
 	WithTx(ctx context.Context, fn func(Repository) error) error
@@ -18,6 +23,7 @@ type Repository interface {
 	UpdateAreaSeverity(ctx context.Context, id int64, severity string) error
 	IncrementReportCount(ctx context.Context, id int64) error
 	ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error)
+	GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error)
 }
 
 type PostgresRepository struct {
@@ -162,4 +168,28 @@ func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit 
 	}
 
 	return areas, total, nil
+}
+
+func (r *PostgresRepository) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
+	result, err := r.queries.GetAffectedArea(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAffectedAreaNotFound
+		}
+		return nil, database.TranslateError(err)
+	}
+
+	return &AffectedArea{
+		ID:                 result.ID,
+		Name:               result.Name,
+		Description:        database.TextValue(result.Description),
+		DisasterID:         result.DisasterID,
+		Location:           database.TextValue(result.Location),
+		Geometry:           geometryValue(result.Geometry),
+		Latitude:           result.Latitude,
+		Longitude:          result.Longitude,
+		Severity:           string(result.Severity),
+		VerificationStatus: string(result.VerificationStatus),
+		ReportCount:        int64(result.ReportCount),
+	}, nil
 }

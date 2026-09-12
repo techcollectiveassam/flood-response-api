@@ -8,4 +8,5 @@ import (
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/affected-areas", m.handler.CreateAffectedArea)
 	rg.GET("/affected-areas", pagination.Middleware(m.params), m.handler.ListAffectedAreas)
+	rg.GET("/affected-areas/:id", m.handler.GetAffectedArea)
 }

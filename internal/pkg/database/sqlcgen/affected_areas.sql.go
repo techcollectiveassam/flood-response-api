@@ -99,6 +99,47 @@ func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedArea
 	return i, err
 }
 
+const getAffectedArea = `-- name: GetAffectedArea :one
+SELECT id, name, description, disaster_id, location,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       latitude, longitude, severity, verification_status, report_count
+FROM affected_areas
+WHERE id = $1
+`
+
+type GetAffectedAreaRow struct {
+	ID                 int64                          `json:"id"`
+	Name               string                         `json:"name"`
+	Description        *string                        `json:"description"`
+	DisasterID         int32                          `json:"disaster_id"`
+	Location           *string                        `json:"location"`
+	Geometry           interface{}                    `json:"geometry"`
+	Latitude           *float64                       `json:"latitude"`
+	Longitude          *float64                       `json:"longitude"`
+	Severity           AffectedAreaSeverity           `json:"severity"`
+	VerificationStatus AffectedAreaVerificationStatus `json:"verification_status"`
+	ReportCount        int32                          `json:"report_count"`
+}
+
+func (q *Queries) GetAffectedArea(ctx context.Context, id int64) (GetAffectedAreaRow, error) {
+	row := q.db.QueryRow(ctx, getAffectedArea, id)
+	var i GetAffectedAreaRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.DisasterID,
+		&i.Location,
+		&i.Geometry,
+		&i.Latitude,
+		&i.Longitude,
+		&i.Severity,
+		&i.VerificationStatus,
+		&i.ReportCount,
+	)
+	return i, err
+}
+
 const incrementReportCount = `-- name: IncrementReportCount :one
 UPDATE affected_areas
 SET report_count = report_count + 1,

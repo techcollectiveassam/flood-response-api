@@ -2,6 +2,7 @@ package affectedarea
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
@@ -78,4 +79,26 @@ func (h *Handler) ListAffectedAreas(c *gin.Context) {
 		TotalPages: pagination.TotalPages(result.Total, limit),
 	}
 	response.Paginated(c, http.StatusOK, items, paginationResp)
+}
+
+func (h *Handler) GetAffectedArea(c *gin.Context) {
+	logger := logging.FromContext(c.Request.Context())
+
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		logger.Warn("get affected area: invalid id", "id", c.Param("id"))
+		response.Error(c, apperror.BadRequest("invalid_id", "affected area id must be a number"))
+		return
+	}
+
+	area, err := h.service.GetAffectedArea(c.Request.Context(), id)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("get affected area failed", "id", id, "error", err)
+		}
+		response.Error(c, err)
+		return
+	}
+
+	response.Data(c, http.StatusOK, toAffectedAreaResponse(area))
 }
