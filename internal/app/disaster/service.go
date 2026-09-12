@@ -37,6 +37,7 @@ func (s *Service) CreateDisaster(ctx context.Context, req CreateDisasterRequest)
 		return nil, err
 	}
 
+	logger.Debug("disaster created", "id", d.ID)
 	return d, nil
 }
 
@@ -50,6 +51,8 @@ func (s *Service) ListDisasters(ctx context.Context) ([]Disaster, error) {
 		}
 		return nil, err
 	}
+
+	logger.Debug("disasters listed", "count", len(disasters))
 	return disasters, nil
 }
 
@@ -63,5 +66,7 @@ func (s *Service) GetDisaster(ctx context.Context, id int32) (*Disaster, error) 
 		}
 		return nil, err
 	}
+
+	logger.Debug("disaster found", "id", id)
 	return d, nil
 }

@@ -80,13 +80,22 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 		return nil, err
 	}
 
-	return &CreateAffectedAreaResponse{
+	result := &CreateAffectedAreaResponse{
 		AffectedArea: toAffectedAreaResponse(area),
 		Report:       toAffectedAreaReportResponse(report),
 		IsNewArea:    resolved.Decision != DecisionMatched,
 		Confidence:   resolved.Confidence,
 		MatchReason:  resolved.MatchReason,
-	}, nil
+	}
+
+	logger.Debug("affected area created",
+		"area_id", area.ID,
+		"is_new_area", result.IsNewArea,
+		"confidence", result.Confidence,
+		"match_reason", result.MatchReason,
+	)
+
+	return result, nil
 }
 
 func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, req CreateAffectedAreaRequest, resolved *ResolvedArea) (*AffectedArea, error) {
