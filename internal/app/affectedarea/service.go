@@ -28,6 +28,11 @@ func NewService(repository Repository, resolver *AffectedAreaResolver) *Service 
 
 func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedAreaRequest) (*CreateAffectedAreaResponse, error) {
 	logger := logging.FromContext(ctx)
+	logger.Debug("create affected area request",
+		"disaster_id", req.DisasterID,
+		"name", req.Name,
+		"severity", req.Severity,
+	)
 
 	if req.Location == nil {
 		return nil, apperror.BadRequest("invalid_location", "location is required")
@@ -78,6 +83,14 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if resolved.Decision == DecisionUncertain {
+		logger.Warn("affected area match uncertain; needs investigation",
+			"disaster_id", req.DisasterID,
+			"confidence", resolved.Confidence,
+			"match_reason", resolved.MatchReason,
+		)
 	}
 
 	result := &CreateAffectedAreaResponse{

@@ -2,6 +2,7 @@ package disaster
 
 import (
 	"context"
+	"errors"
 
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
@@ -20,6 +21,12 @@ func NewService(repository Repository) *Service {
 
 func (s *Service) CreateDisaster(ctx context.Context, req CreateDisasterRequest) (*Disaster, error) {
 	logger := logging.FromContext(ctx)
+	logger.Debug("create disaster request",
+		"name", req.Name,
+		"type", req.Type,
+		"starts_at", req.StartsAt,
+		"ends_at", req.EndsAt,
+	)
 
 	d := &Disaster{
 		Name:        req.Name,
@@ -61,7 +68,9 @@ func (s *Service) GetDisaster(ctx context.Context, id int32) (*Disaster, error) 
 
 	d, err := s.repository.GetByID(ctx, id)
 	if err != nil {
-		if apperror.HTTPStatus(err) >= 500 {
+		if errors.Is(err, ErrDisasterNotFound) {
+			logger.Warn("disaster not found", "id", id)
+		} else if apperror.HTTPStatus(err) >= 500 {
 			logger.Error("get disaster", "id", id, "error", err)
 		}
 		return nil, err
