@@ -15,11 +15,10 @@ func NewFeatures(application *Application) *Features {
 	return &Features{
 		AffectedArea: affectedarea.New(
 			application.DB,
-			application.Logger,
+			application.Config,
 		),
 		Disaster: disaster.New(
 			application.DB,
-			application.Logger,
 		),
 	}
 }

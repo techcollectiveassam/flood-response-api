@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -11,6 +12,19 @@ type Config struct {
 	Environment string
 	Port        string
 	Database    DatabaseConfig
+	Logger      LoggerConfig
+	Pagination  PaginationConfig
+}
+
+type PaginationConfig struct {
+	DefaultPage  int
+	DefaultLimit int
+	MaxLimit     int
+}
+
+type LoggerConfig struct {
+	Level  string
+	Format string
 }
 
 type DatabaseConfig struct {
@@ -34,10 +48,22 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	loggerConfig, err := loadLoggerConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	paginationConfig, err := loadPaginationConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Environment: valueOrDefault("APP_ENV", "development"),
 		Port:        valueOrDefault("PORT", "8080"),
 		Database:    databaseConfig,
+		Logger:      loggerConfig,
+		Pagination:  paginationConfig,
 	}, nil
 }
 
@@ -81,6 +107,32 @@ func loadDatabaseConfig(databaseURL string) (DatabaseConfig, error) {
 	}, nil
 }
 
+func loadPaginationConfig() (PaginationConfig, error) {
+	defaultPage, err := intValue("PAGINATION_DEFAULT_PAGE", 1, 1)
+	if err != nil {
+		return PaginationConfig{}, err
+	}
+
+	defaultLimit, err := intValue("PAGINATION_DEFAULT_LIMIT", 20, 1)
+	if err != nil {
+		return PaginationConfig{}, err
+	}
+
+	maxLimit, err := intValue("PAGINATION_MAX_LIMIT", 100, 1)
+	if err != nil {
+		return PaginationConfig{}, err
+	}
+	if maxLimit < defaultLimit {
+		return PaginationConfig{}, fmt.Errorf("PAGINATION_MAX_LIMIT cannot be less than PAGINATION_DEFAULT_LIMIT")
+	}
+
+	return PaginationConfig{
+		DefaultPage:  defaultPage,
+		DefaultLimit: defaultLimit,
+		MaxLimit:     maxLimit,
+	}, nil
+}
+
 func valueOrDefault(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -107,4 +159,26 @@ func durationValue(key string, fallback time.Duration) (time.Duration, error) {
 	}
 
 	return parsed, nil
+}
+
+var validLogLevels = map[string]bool{
+	"debug": true, "info": true, "warn": true, "error": true,
+}
+
+var validLogFormats = map[string]bool{
+	"json": true, "text": true,
+}
+
+func loadLoggerConfig() (LoggerConfig, error) {
+	level := strings.ToLower(valueOrDefault("LOG_LEVEL", "info"))
+	if !validLogLevels[level] {
+		return LoggerConfig{}, fmt.Errorf("LOG_LEVEL must be one of: debug, info, warn, error")
+	}
+
+	format := strings.ToLower(valueOrDefault("LOG_FORMAT", "json"))
+	if !validLogFormats[format] {
+		return LoggerConfig{}, fmt.Errorf("LOG_FORMAT must be one of: json, text")
+	}
+
+	return LoggerConfig{Level: level, Format: format}, nil
 }

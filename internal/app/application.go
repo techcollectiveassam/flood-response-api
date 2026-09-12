@@ -1,12 +1,12 @@
 package app
 
 import (
-	"log"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/config"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 )
 
 type Application struct {
@@ -21,14 +21,16 @@ func New() (*Application, error) {
 		return nil, err
 	}
 
+	logger := logging.New(configuration.Logger)
+	logger.Info("config loaded", "env", configuration.Environment, "port", configuration.Port)
+
+	logger.Info("database connecting")
 	db, err := database.New(configuration.Database)
 	if err != nil {
+		logger.Error("database connection failed", "error", err)
 		return nil, err
 	}
-
-	logger := slog.New(slog.NewJSONHandler(log.Writer(), &slog.HandlerOptions{
-		AddSource: true,
-	}))
+	logger.Info("database connected")
 
 	return &Application{
 		Config: configuration,

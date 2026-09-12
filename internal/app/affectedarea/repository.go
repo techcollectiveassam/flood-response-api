@@ -2,30 +2,58 @@ package affectedarea
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database/sqlcgen"
 )
 
-var ErrDisasterNotFound = apperror.NotFound("disaster_not_found", "disaster not found")
+var (
+	ErrDisasterNotFound     = apperror.NotFound("disaster_not_found", "disaster not found")
+	ErrAffectedAreaNotFound = apperror.NotFound("affected_area_not_found", "affected area not found")
+)
 
 type Repository interface {
+	WithTx(ctx context.Context, fn func(Repository) error) error
 	CreateArea(ctx context.Context, area *AffectedArea) error
 	CreateReport(ctx context.Context, report *AffectedAreaReport) error
 	UpdateAreaSeverity(ctx context.Context, id int64, severity string) error
 	IncrementReportCount(ctx context.Context, id int64) error
+	ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error)
+	GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error)
 }
 
 type PostgresRepository struct {
+	pool    *pgxpool.Pool
 	queries *sqlcgen.Queries
 }
 
 func NewRepository(pool *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{
+		pool:    pool,
 		queries: sqlcgen.New(pool),
 	}
+}
+
+func (r *PostgresRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
+	if r.pool == nil {
+		return apperror.Internal("nested_transaction", "WithTx cannot be called inside an existing transaction")
+	}
+
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	if err := fn(&PostgresRepository{queries: sqlcgen.New(tx)}); err != nil {
+		return err
+	}
+
+	return database.TranslateError(tx.Commit(ctx))
 }
 
 func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea) error {
@@ -106,4 +134,62 @@ func geometryValue(value interface{}) string {
 	default:
 		return ""
 	}
+}
+
+func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error) {
+	result, err := r.queries.ListAffectedAreas(ctx, sqlcgen.ListAffectedAreasParams{
+		Limit:  int32(limit),
+		Offset: int32((page - 1) * limit),
+	})
+	if err != nil {
+		return nil, 0, database.TranslateError(err)
+	}
+
+	var total int64
+	if len(result) > 0 {
+		total = result[0].TotalCount
+	}
+
+	areas := make([]*AffectedArea, len(result))
+	for i, area := range result {
+		areas[i] = &AffectedArea{
+			ID:                 area.ID,
+			Name:               area.Name,
+			Description:        database.TextValue(area.Description),
+			DisasterID:         area.DisasterID,
+			Location:           database.TextValue(area.Location),
+			Geometry:           geometryValue(area.Geometry),
+			Latitude:           area.Latitude,
+			Longitude:          area.Longitude,
+			Severity:           string(area.Severity),
+			VerificationStatus: string(area.VerificationStatus),
+			ReportCount:        int64(area.ReportCount),
+		}
+	}
+
+	return areas, total, nil
+}
+
+func (r *PostgresRepository) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
+	result, err := r.queries.GetAffectedArea(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAffectedAreaNotFound
+		}
+		return nil, database.TranslateError(err)
+	}
+
+	return &AffectedArea{
+		ID:                 result.ID,
+		Name:               result.Name,
+		Description:        database.TextValue(result.Description),
+		DisasterID:         result.DisasterID,
+		Location:           database.TextValue(result.Location),
+		Geometry:           geometryValue(result.Geometry),
+		Latitude:           result.Latitude,
+		Longitude:          result.Longitude,
+		Severity:           string(result.Severity),
+		VerificationStatus: string(result.VerificationStatus),
+		ReportCount:        int64(result.ReportCount),
+	}, nil
 }
