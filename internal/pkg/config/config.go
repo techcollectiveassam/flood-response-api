@@ -13,6 +13,13 @@ type Config struct {
 	Port        string
 	Database    DatabaseConfig
 	Logger      LoggerConfig
+	Pagination  PaginationConfig
+}
+
+type PaginationConfig struct {
+	DefaultPage  int
+	DefaultLimit int
+	MaxLimit     int
 }
 
 type LoggerConfig struct {
@@ -46,11 +53,17 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	paginationConfig, err := loadPaginationConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Environment: valueOrDefault("APP_ENV", "development"),
 		Port:        valueOrDefault("PORT", "8080"),
 		Database:    databaseConfig,
 		Logger:      loggerConfig,
+		Pagination:  paginationConfig,
 	}, nil
 }
 
@@ -91,6 +104,32 @@ func loadDatabaseConfig(databaseURL string) (DatabaseConfig, error) {
 		ConnMaxLifetime: maxLifetime,
 		ConnMaxIdleTime: maxIdleTime,
 		ConnectTimeout:  connectTimeout,
+	}, nil
+}
+
+func loadPaginationConfig() (PaginationConfig, error) {
+	defaultPage, err := intValue("PAGINATION_DEFAULT_PAGE", 1, 1)
+	if err != nil {
+		return PaginationConfig{}, err
+	}
+
+	defaultLimit, err := intValue("PAGINATION_DEFAULT_LIMIT", 20, 1)
+	if err != nil {
+		return PaginationConfig{}, err
+	}
+
+	maxLimit, err := intValue("PAGINATION_MAX_LIMIT", 100, 1)
+	if err != nil {
+		return PaginationConfig{}, err
+	}
+	if maxLimit < defaultLimit {
+		return PaginationConfig{}, fmt.Errorf("PAGINATION_MAX_LIMIT cannot be less than PAGINATION_DEFAULT_LIMIT")
+	}
+
+	return PaginationConfig{
+		DefaultPage:  defaultPage,
+		DefaultLimit: defaultLimit,
+		MaxLimit:     maxLimit,
 	}, nil
 }
 

@@ -74,3 +74,61 @@ func TestUpdateAreaSeverity(t *testing.T) {
 		})
 	}
 }
+
+func TestListAffectedAreas(t *testing.T) {
+	areas := []*AffectedArea{
+		{ID: 2, Name: "Flood Zone B", Severity: "high", VerificationStatus: StatusReported, ReportCount: 1},
+		{ID: 1, Name: "Flood Zone A", Severity: "medium", VerificationStatus: StatusReported, ReportCount: 5},
+	}
+
+	repo := &mockRepository{listAreas: areas, listTotal: 42}
+	svc := newTestService(repo)
+
+	result, err := svc.ListAffectedAreas(context.Background(), 2, 10)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), result.Total)
+	assert.Len(t, result.Areas, 2)
+	assert.Equal(t, 2, repo.listPage)
+	assert.Equal(t, 10, repo.listLimit)
+}
+
+func TestListAffectedAreasError(t *testing.T) {
+	repo := &mockRepository{listErr: assert.AnError}
+	svc := newTestService(repo)
+
+	result, err := svc.ListAffectedAreas(context.Background(), 1, 20)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestGetAffectedArea(t *testing.T) {
+	area := &AffectedArea{ID: 1, Name: "Flood Zone A", Severity: "high", VerificationStatus: StatusReported, ReportCount: 3}
+	repo := &mockRepository{getAffected: area}
+	svc := newTestService(repo)
+
+	result, err := svc.GetAffectedArea(context.Background(), 1)
+
+	assert.NoError(t, err)
+	assert.Equal(t, area, result)
+}
+
+func TestGetAffectedAreaNotFound(t *testing.T) {
+	svc := newTestService(&mockRepository{})
+
+	result, err := svc.GetAffectedArea(context.Background(), 999)
+
+	assert.ErrorIs(t, err, ErrAffectedAreaNotFound)
+	assert.Nil(t, result)
+}
+
+func TestGetAffectedAreaError(t *testing.T) {
+	repo := &mockRepository{getErr: assert.AnError}
+	svc := newTestService(repo)
+
+	result, err := svc.GetAffectedArea(context.Background(), 1)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
