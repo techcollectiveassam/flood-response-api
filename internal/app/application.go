@@ -21,15 +21,21 @@ func New() (*Application, error) {
 		return nil, err
 	}
 
+	logger := logging.New(configuration.Logger)
+	logger.Info("config loaded", "env", configuration.Environment, "port", configuration.Port)
+
+	logger.Info("database connecting")
 	db, err := database.New(configuration.Database)
 	if err != nil {
+		logger.Error("database connection failed", "error", err)
 		return nil, err
 	}
+	logger.Info("database connected")
 
 	return &Application{
 		Config: configuration,
 		DB:     db,
-		Logger: logging.New(configuration.Logger),
+		Logger: logger,
 	}, nil
 }
 
