@@ -19,6 +19,7 @@ func New(databaseConfig config.DatabaseConfig) (*pgxpool.Pool, error) {
 	config.MaxConnLifetime = databaseConfig.ConnMaxLifetime
 	config.MaxConnIdleTime = databaseConfig.ConnMaxIdleTime
 	config.ConnConfig.ConnectTimeout = databaseConfig.ConnectTimeout
+	config.ConnConfig.Tracer = QueryTracer{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), databaseConfig.ConnectTimeout)
 	defer cancel()
