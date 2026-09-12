@@ -114,6 +114,69 @@ func (q *Queries) IncrementReportCount(ctx context.Context, id int64) (int32, er
 	return report_count, err
 }
 
+const listAffectedAreas = `-- name: ListAffectedAreas :many
+SELECT id, name, description, disaster_id, location,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       latitude, longitude, severity, verification_status, report_count,
+       COUNT(*) OVER() AS total_count
+FROM affected_areas
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListAffectedAreasParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListAffectedAreasRow struct {
+	ID                 int64                          `json:"id"`
+	Name               string                         `json:"name"`
+	Description        *string                        `json:"description"`
+	DisasterID         int32                          `json:"disaster_id"`
+	Location           *string                        `json:"location"`
+	Geometry           interface{}                    `json:"geometry"`
+	Latitude           *float64                       `json:"latitude"`
+	Longitude          *float64                       `json:"longitude"`
+	Severity           AffectedAreaSeverity           `json:"severity"`
+	VerificationStatus AffectedAreaVerificationStatus `json:"verification_status"`
+	ReportCount        int32                          `json:"report_count"`
+	TotalCount         int64                          `json:"total_count"`
+}
+
+func (q *Queries) ListAffectedAreas(ctx context.Context, arg ListAffectedAreasParams) ([]ListAffectedAreasRow, error) {
+	rows, err := q.db.Query(ctx, listAffectedAreas, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAffectedAreasRow{}
+	for rows.Next() {
+		var i ListAffectedAreasRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.DisasterID,
+			&i.Location,
+			&i.Geometry,
+			&i.Latitude,
+			&i.Longitude,
+			&i.Severity,
+			&i.VerificationStatus,
+			&i.ReportCount,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateAreaSeverity = `-- name: UpdateAreaSeverity :one
 UPDATE affected_areas
 SET severity = $2::affected_area_severity,

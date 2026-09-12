@@ -15,6 +15,7 @@ type Querier interface {
 	GetAffectedAreaReportByID(ctx context.Context, id int64) (AffectedAreaReport, error)
 	GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error)
 	IncrementReportCount(ctx context.Context, id int64) (int32, error)
+	ListAffectedAreas(ctx context.Context, arg ListAffectedAreasParams) ([]ListAffectedAreasRow, error)
 	ListDisasters(ctx context.Context) ([]ListDisastersRow, error)
 	UpdateAreaSeverity(ctx context.Context, arg UpdateAreaSeverityParams) (AffectedAreaSeverity, error)
 }

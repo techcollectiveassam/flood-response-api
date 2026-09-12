@@ -38,6 +38,15 @@ func TestLoadUsesDatabaseDefaults(t *testing.T) {
 	if configuration.Database.ConnectTimeout != 5*time.Second {
 		t.Errorf("ConnectTimeout = %s, want 5s", configuration.Database.ConnectTimeout)
 	}
+	if configuration.Pagination.DefaultPage != 1 {
+		t.Errorf("DefaultPage = %d, want 1", configuration.Pagination.DefaultPage)
+	}
+	if configuration.Pagination.DefaultLimit != 20 {
+		t.Errorf("DefaultLimit = %d, want 20", configuration.Pagination.DefaultLimit)
+	}
+	if configuration.Pagination.MaxLimit != 100 {
+		t.Errorf("MaxLimit = %d, want 100", configuration.Pagination.MaxLimit)
+	}
 }
 
 func TestLoadRejectsInvalidDatabasePoolSize(t *testing.T) {
@@ -50,5 +59,19 @@ func TestLoadRejectsInvalidDatabasePoolSize(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "DATABASE_MAX_OPEN_CONNS") {
 		t.Errorf("Load() error = %q, want DATABASE_MAX_OPEN_CONNS", err)
+	}
+}
+
+func TestLoadRejectsMaxLimitBelowDefaultLimit(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://user:password@db:5432/flood_response?sslmode=disable")
+	t.Setenv("PAGINATION_DEFAULT_LIMIT", "50")
+	t.Setenv("PAGINATION_MAX_LIMIT", "25")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil, want an error")
+	}
+	if !strings.Contains(err.Error(), "PAGINATION_MAX_LIMIT") {
+		t.Errorf("Load() error = %q, want PAGINATION_MAX_LIMIT", err)
 	}
 }

@@ -15,6 +15,7 @@ func NewFeatures(application *Application) *Features {
 	return &Features{
 		AffectedArea: affectedarea.New(
 			application.DB,
+			application.Config,
 		),
 		Disaster: disaster.New(
 			application.DB,

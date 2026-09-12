@@ -156,3 +156,22 @@ func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, 
 func severityHigher(candidate, current string) bool {
 	return severityRank[candidate] > severityRank[current]
 }
+
+type ListAffectedAreasResult struct {
+	Areas []*AffectedArea
+	Total int64
+}
+
+func (s *Service) ListAffectedAreas(ctx context.Context, page, limit int) (*ListAffectedAreasResult, error) {
+	logger := logging.FromContext(ctx)
+	areas, total, err := s.repository.ListAffectedAreas(ctx, page, limit)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("list affected areas", "error", err)
+		}
+		return nil, err
+	}
+
+	logger.Debug("affected areas listed", "count", len(areas), "total", total)
+	return &ListAffectedAreasResult{Areas: areas, Total: total}, nil
+}

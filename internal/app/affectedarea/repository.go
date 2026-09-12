@@ -17,6 +17,7 @@ type Repository interface {
 	CreateReport(ctx context.Context, report *AffectedAreaReport) error
 	UpdateAreaSeverity(ctx context.Context, id int64, severity string) error
 	IncrementReportCount(ctx context.Context, id int64) error
+	ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error)
 }
 
 type PostgresRepository struct {
@@ -127,4 +128,38 @@ func geometryValue(value interface{}) string {
 	default:
 		return ""
 	}
+}
+
+func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error) {
+	result, err := r.queries.ListAffectedAreas(ctx, sqlcgen.ListAffectedAreasParams{
+		Limit:  int32(limit),
+		Offset: int32((page - 1) * limit),
+	})
+	if err != nil {
+		return nil, 0, database.TranslateError(err)
+	}
+
+	var total int64
+	if len(result) > 0 {
+		total = result[0].TotalCount
+	}
+
+	areas := make([]*AffectedArea, len(result))
+	for i, area := range result {
+		areas[i] = &AffectedArea{
+			ID:                 area.ID,
+			Name:               area.Name,
+			Description:        database.TextValue(area.Description),
+			DisasterID:         area.DisasterID,
+			Location:           database.TextValue(area.Location),
+			Geometry:           geometryValue(area.Geometry),
+			Latitude:           area.Latitude,
+			Longitude:          area.Longitude,
+			Severity:           string(area.Severity),
+			VerificationStatus: string(area.VerificationStatus),
+			ReportCount:        int64(area.ReportCount),
+		}
+	}
+
+	return areas, total, nil
 }

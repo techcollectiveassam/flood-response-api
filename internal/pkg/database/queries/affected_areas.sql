@@ -45,3 +45,12 @@ SET report_count = report_count + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING report_count;
+
+-- name: ListAffectedAreas :many
+SELECT id, name, description, disaster_id, location,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       latitude, longitude, severity, verification_status, report_count,
+       COUNT(*) OVER() AS total_count
+FROM affected_areas
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;

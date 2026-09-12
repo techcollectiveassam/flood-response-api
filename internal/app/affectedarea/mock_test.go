@@ -7,12 +7,18 @@ type mockRepository struct {
 	createReportErr   error
 	updateSeverityErr error
 	incrementErr      error
+	listErr           error
 
 	createdArea   *AffectedArea
 	createdReport *AffectedAreaReport
 
+	listAreas []*AffectedArea
+	listTotal int64
+
 	severityUpdates []string
 	increments      []int64
+	listPage        int
+	listLimit       int
 }
 
 func (m *mockRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
@@ -55,4 +61,13 @@ func (m *mockRepository) IncrementReportCount(ctx context.Context, id int64) err
 	}
 	m.increments = append(m.increments, id)
 	return nil
+}
+
+func (m *mockRepository) ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error) {
+	m.listPage = page
+	m.listLimit = limit
+	if m.listErr != nil {
+		return nil, 0, m.listErr
+	}
+	return m.listAreas, m.listTotal, nil
 }
