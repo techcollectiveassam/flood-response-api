@@ -2,14 +2,13 @@ package affectedarea
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func newTestService(repo *mockRepository) *Service {
-	return NewService(repo, NewAffectedAreaResolver(), slog.Default())
+	return NewService(repo, NewAffectedAreaResolver())
 }
 
 func textRequest() CreateAffectedAreaRequest {

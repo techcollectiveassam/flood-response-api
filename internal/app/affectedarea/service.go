@@ -2,9 +2,9 @@ package affectedarea
 
 import (
 	"context"
-	"log/slog"
 
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 )
 
 var severityRank = map[string]int{
@@ -17,18 +17,18 @@ var severityRank = map[string]int{
 type Service struct {
 	repository Repository
 	resolver   *AffectedAreaResolver
-	logger     *slog.Logger
 }
 
-func NewService(repository Repository, resolver *AffectedAreaResolver, logger *slog.Logger) *Service {
+func NewService(repository Repository, resolver *AffectedAreaResolver) *Service {
 	return &Service{
 		repository: repository,
 		resolver:   resolver,
-		logger:     logger,
 	}
 }
 
 func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedAreaRequest) (*CreateAffectedAreaResponse, error) {
+	logger := logging.FromContext(ctx)
+
 	if req.Location == nil {
 		return nil, apperror.BadRequest("invalid_location", "location is required")
 	}
@@ -39,7 +39,7 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 	resolved, err := s.resolver.Resolve(ctx, req.DisasterID, *req.Location)
 	if err != nil {
 		if apperror.HTTPStatus(err) >= 500 {
-			s.logger.Error("resolve affected area", "error", err)
+			logger.Error("resolve affected area", "error", err)
 		}
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 		area, err = s.matchOrCreateArea(ctx, repository, req, resolved)
 		if err != nil {
 			if apperror.HTTPStatus(err) >= 500 {
-				s.logger.Error("ensure affected area", "error", err)
+				logger.Error("ensure affected area", "error", err)
 			}
 			return err
 		}
@@ -69,7 +69,7 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 		}
 		if err := repository.CreateReport(ctx, report); err != nil {
 			if apperror.HTTPStatus(err) >= 500 {
-				s.logger.Error("create affected area report", "error", err)
+				logger.Error("create affected area report", "error", err)
 			}
 			return err
 		}
