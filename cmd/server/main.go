@@ -23,9 +23,11 @@ func main() {
 	}
 	defer application.Close()
 
+	logger := application.Logger
+
 	features := app.NewFeatures(application)
 
-	router := api.NewRouter(features)
+	router := api.NewRouter(features, logger)
 
 	server := &http.Server{
 		Addr:    ":" + application.Config.Port,
@@ -37,17 +39,20 @@ func main() {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error: %v", err)
+			logger.Error("server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
-	log.Printf("server listening on :%s", application.Config.Port)
+	logger.Info("server listening", "port", application.Config.Port)
 
 	<-ctx.Done()
+
+	logger.Info("shutting down")
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("graceful shutdown failed: %v", err)
+		logger.Error("graceful shutdown failed", "error", err)
 	}
 }

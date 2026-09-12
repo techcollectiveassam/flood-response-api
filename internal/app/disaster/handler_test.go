@@ -3,7 +3,6 @@ package disaster
 import (
 	"bytes"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -123,7 +122,7 @@ func TestCreateDisasterHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepository{createErr: tt.repoErr}
-			svc := NewService(repo, slog.Default())
+			svc := NewService(repo)
 			handler := NewHandler(svc)
 			router := setupRouter(handler)
 
@@ -216,7 +215,7 @@ func TestListDisastersHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepository{list: tt.list, listErr: tt.repoErr}
-			svc := NewService(repo, slog.Default())
+			svc := NewService(repo)
 			handler := NewHandler(svc)
 			router := setupRouter(handler)
 
@@ -303,7 +302,7 @@ func TestGetDisasterHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepository{get: tt.get, getErr: tt.repoErr, getNotFound: tt.notFound}
-			svc := NewService(repo, slog.Default())
+			svc := NewService(repo)
 			handler := NewHandler(svc)
 			router := setupRouter(handler)
 

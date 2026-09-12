@@ -2,7 +2,6 @@ package disaster
 
 import (
 	"context"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -10,8 +9,6 @@ import (
 )
 
 func TestCreateDisaster(t *testing.T) {
-	logger := slog.Default()
-
 	tests := []struct {
 		name         string
 		req          CreateDisasterRequest
@@ -56,7 +53,7 @@ func TestCreateDisaster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepository{createErr: tt.repoErr}
-			svc := NewService(repo, logger)
+			svc := NewService(repo)
 
 			resp, err := svc.CreateDisaster(context.Background(), tt.req)
 
@@ -88,8 +85,6 @@ func utcPtr(t time.Time) *time.Time {
 }
 
 func TestListDisasters(t *testing.T) {
-	logger := slog.Default()
-
 	tests := []struct {
 		name     string
 		list     []Disaster
@@ -127,7 +122,7 @@ func TestListDisasters(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepository{list: tt.list, listErr: tt.repoErr}
-			svc := NewService(repo, logger)
+			svc := NewService(repo)
 
 			resp, err := svc.ListDisasters(context.Background())
 
@@ -146,8 +141,6 @@ func TestListDisasters(t *testing.T) {
 }
 
 func TestGetDisaster(t *testing.T) {
-	logger := slog.Default()
-
 	tests := []struct {
 		name     string
 		get      *Disaster
@@ -177,7 +170,7 @@ func TestGetDisaster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepository{get: tt.get, getErr: tt.repoErr, getNotFound: tt.notFound}
-			svc := NewService(repo, logger)
+			svc := NewService(repo)
 
 			resp, err := svc.GetDisaster(context.Background(), 1)
 
