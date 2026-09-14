@@ -10,13 +10,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/techcollectiveassam/flood-response-api/internal/app"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/config"
 )
 
 func newTestRouter(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	logger := slog.Default()
-	features := app.NewFeatures(&app.Application{Logger: logger})
+	features := app.NewFeatures(&app.Application{
+		Logger: logger,
+		Config: &config.Config{},
+	})
 	return NewRouter(features, logger)
 }
 

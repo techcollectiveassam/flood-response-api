@@ -14,6 +14,11 @@ type Config struct {
 	Database    DatabaseConfig
 	Logger      LoggerConfig
 	Pagination  PaginationConfig
+	Sos         SosConfig
+}
+
+type SosConfig struct {
+	DuplicateRadiusMeters float64
 }
 
 type PaginationConfig struct {
@@ -58,13 +63,28 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	sosConfig, err := loadSosConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Environment: valueOrDefault("APP_ENV", "development"),
 		Port:        valueOrDefault("PORT", "8080"),
 		Database:    databaseConfig,
 		Logger:      loggerConfig,
 		Pagination:  paginationConfig,
+		Sos:         sosConfig,
 	}, nil
+}
+
+func loadSosConfig() (SosConfig, error) {
+	radius, err := floatValue("SOS_DUPLICATE_RADIUS_METERS", 100, 0)
+	if err != nil {
+		return SosConfig{}, err
+	}
+
+	return SosConfig{DuplicateRadiusMeters: radius}, nil
 }
 
 func loadDatabaseConfig(databaseURL string) (DatabaseConfig, error) {
@@ -146,6 +166,16 @@ func intValue(key string, fallback, min int) (int, error) {
 	parsed, err := strconv.Atoi(value)
 	if err != nil || parsed < min {
 		return 0, fmt.Errorf("%s must be an integer greater than or equal to %d", key, min)
+	}
+
+	return parsed, nil
+}
+
+func floatValue(key string, fallback, min float64) (float64, error) {
+	value := valueOrDefault(key, strconv.FormatFloat(fallback, 'f', -1, 64))
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil || parsed < min {
+		return 0, fmt.Errorf("%s must be a number greater than or equal to %g", key, min)
 	}
 
 	return parsed, nil

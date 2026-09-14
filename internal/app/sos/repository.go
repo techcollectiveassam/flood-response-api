@@ -3,7 +3,10 @@ package sos
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database/sqlcgen"
@@ -11,6 +14,8 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, sos *SOS) error
+	FindNearby(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error)
+	IncrementReportCount(ctx context.Context, id int64) (*SOS, error)
 }
 
 type PostgresRepository struct {
@@ -25,7 +30,8 @@ func NewRepository(pool *pgxpool.Pool) *PostgresRepository {
 
 func (r *PostgresRepository) Create(ctx context.Context, sos *SOS) error {
 	result, err := r.queries.CreateSOSRequest(ctx, sqlcgen.CreateSOSRequestParams{
-		Column1:        pointGeoJSON(sos.Longitude, sos.Latitude),
+		DisasterID:     sos.DisasterID,
+		Column2:        pointGeoJSON(sos.Longitude, sos.Latitude),
 		ReporterMobile: database.NullableString(sos.ReporterMobile),
 		Message:        database.NullableString(sos.Message),
 	})
@@ -33,16 +39,49 @@ func (r *PostgresRepository) Create(ctx context.Context, sos *SOS) error {
 		return database.TranslateError(err)
 	}
 
-	sos.ID = result.ID
-	sos.Latitude, sos.Longitude = coordinatesFromGeometry(result.Geometry)
-	sos.ReporterMobile = database.TextValue(result.ReporterMobile)
-	sos.Message = database.TextValue(result.Message)
-	sos.Status = string(result.Status)
-	sos.ReportCount = result.ReportCount
-	sos.CreatedAt = result.CreatedAt
-	sos.UpdatedAt = result.UpdatedAt
-
+	*sos = *sosFromRow(result.ID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt)
 	return nil
+}
+
+func (r *PostgresRepository) FindNearby(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error) {
+	result, err := r.queries.FindSOSNearby(ctx, sqlcgen.FindSOSNearbyParams{
+		DisasterID: disasterID,
+		Column2:    mobile,
+		Column3:    geometry,
+		Column4:    radiusMeters,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, database.TranslateError(err)
+	}
+
+	return sosFromRow(result.ID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt), nil
+}
+
+func (r *PostgresRepository) IncrementReportCount(ctx context.Context, id int64) (*SOS, error) {
+	result, err := r.queries.IncrementSOSReportCount(ctx, id)
+	if err != nil {
+		return nil, database.TranslateError(err)
+	}
+
+	return sosFromRow(result.ID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt), nil
+}
+
+func sosFromRow(id int64, disasterID int32, geometry interface{}, reporterMobile, message *string, status sqlcgen.SosStatus, reportCount int32, createdAt, updatedAt time.Time) *SOS {
+	s := &SOS{
+		ID:             id,
+		DisasterID:     disasterID,
+		ReporterMobile: database.TextValue(reporterMobile),
+		Message:        database.TextValue(message),
+		Status:         string(status),
+		ReportCount:    reportCount,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
+	}
+	s.Latitude, s.Longitude = coordinatesFromGeometry(geometry)
+	return s
 }
 
 // pointGeoJSON builds the GeoJSON Point the database stores in its geom

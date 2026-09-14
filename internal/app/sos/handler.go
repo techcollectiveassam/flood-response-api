@@ -28,7 +28,7 @@ func (h *Handler) CreateSOS(c *gin.Context) {
 		return
 	}
 
-	result, err := h.service.CreateSOS(c.Request.Context(), req)
+	result, created, err := h.service.CreateSOS(c.Request.Context(), req)
 	if err != nil {
 		if apperror.HTTPStatus(err) >= 500 {
 			logger.Error("create sos failed", "error", err)
@@ -37,5 +37,9 @@ func (h *Handler) CreateSOS(c *gin.Context) {
 		return
 	}
 
-	response.Data(c, http.StatusCreated, toSOSResponse(result))
+	status := http.StatusOK
+	if created {
+		status = http.StatusCreated
+	}
+	response.Data(c, status, toSOSResponse(result))
 }

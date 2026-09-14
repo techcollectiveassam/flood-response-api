@@ -189,9 +189,10 @@ func (ns NullDisasterType) Value() (driver.Value, error) {
 type SosStatus string
 
 const (
-	SosStatusReported SosStatus = "reported"
-	SosStatusActive   SosStatus = "active"
-	SosStatusResolved SosStatus = "resolved"
+	SosStatusReported  SosStatus = "reported"
+	SosStatusActive    SosStatus = "active"
+	SosStatusResolved  SosStatus = "resolved"
+	SosStatusCancelled SosStatus = "cancelled"
 )
 
 func (e *SosStatus) Scan(src interface{}) error {
@@ -280,4 +281,5 @@ type SosRequest struct {
 	ReportCount    int32       `json:"report_count"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
+	DisasterID     int32       `json:"disaster_id"`
 }

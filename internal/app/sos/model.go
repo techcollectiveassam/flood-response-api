@@ -8,6 +8,7 @@ const (
 
 type SOS struct {
 	ID             int64
+	DisasterID     int32
 	Latitude       *float64
 	Longitude      *float64
 	ReporterMobile string

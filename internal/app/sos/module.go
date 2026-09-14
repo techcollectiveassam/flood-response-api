@@ -9,9 +9,9 @@ type Module struct {
 	handler *Handler
 }
 
-func New(db *pgxpool.Pool, _ *config.Config) *Module {
+func New(db *pgxpool.Pool, cfg *config.Config) *Module {
 	repository := NewRepository(db)
-	service := NewService(repository)
+	service := NewService(repository, cfg.Sos.DuplicateRadiusMeters)
 	handler := NewHandler(service)
 	return &Module{
 		handler: handler,

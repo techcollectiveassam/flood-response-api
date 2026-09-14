@@ -12,28 +12,33 @@ import (
 
 const createSOSRequest = `-- name: CreateSOSRequest :one
 INSERT INTO sos_requests (
+    disaster_id,
     geom,
     reporter_mobile,
     message
 )
 VALUES (
-    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($1::text, '')), 4326),
-    $2,
-    $3
+    $1,
+    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($2::text, '')), 4326),
+    $3,
+    $4
 )
 RETURNING id,
+          disaster_id,
           COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
           reporter_mobile, message, status, report_count, created_at, updated_at
 `
 
 type CreateSOSRequestParams struct {
-	Column1        string  `json:"column_1"`
+	DisasterID     int32   `json:"disaster_id"`
+	Column2        string  `json:"column_2"`
 	ReporterMobile *string `json:"reporter_mobile"`
 	Message        *string `json:"message"`
 }
 
 type CreateSOSRequestRow struct {
 	ID             int64       `json:"id"`
+	DisasterID     int32       `json:"disaster_id"`
 	Geometry       interface{} `json:"geometry"`
 	ReporterMobile *string     `json:"reporter_mobile"`
 	Message        *string     `json:"message"`
@@ -44,10 +49,116 @@ type CreateSOSRequestRow struct {
 }
 
 func (q *Queries) CreateSOSRequest(ctx context.Context, arg CreateSOSRequestParams) (CreateSOSRequestRow, error) {
-	row := q.db.QueryRow(ctx, createSOSRequest, arg.Column1, arg.ReporterMobile, arg.Message)
+	row := q.db.QueryRow(ctx, createSOSRequest,
+		arg.DisasterID,
+		arg.Column2,
+		arg.ReporterMobile,
+		arg.Message,
+	)
 	var i CreateSOSRequestRow
 	err := row.Scan(
 		&i.ID,
+		&i.DisasterID,
+		&i.Geometry,
+		&i.ReporterMobile,
+		&i.Message,
+		&i.Status,
+		&i.ReportCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const findSOSNearby = `-- name: FindSOSNearby :one
+SELECT id,
+       disaster_id,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       reporter_mobile, message, status, report_count, created_at, updated_at
+FROM sos_requests
+WHERE disaster_id = $1
+  AND status IN ('reported', 'active')
+  AND geom IS NOT NULL
+  AND ($2::text = '' OR reporter_mobile = $2)
+  AND ST_DWithin(
+        geom::geography,
+        ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography,
+        $4::double precision
+      )
+ORDER BY created_at DESC, id DESC
+LIMIT 1
+`
+
+type FindSOSNearbyParams struct {
+	DisasterID int32   `json:"disaster_id"`
+	Column2    string  `json:"column_2"`
+	Column3    string  `json:"column_3"`
+	Column4    float64 `json:"column_4"`
+}
+
+type FindSOSNearbyRow struct {
+	ID             int64       `json:"id"`
+	DisasterID     int32       `json:"disaster_id"`
+	Geometry       interface{} `json:"geometry"`
+	ReporterMobile *string     `json:"reporter_mobile"`
+	Message        *string     `json:"message"`
+	Status         SosStatus   `json:"status"`
+	ReportCount    int32       `json:"report_count"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) FindSOSNearby(ctx context.Context, arg FindSOSNearbyParams) (FindSOSNearbyRow, error) {
+	row := q.db.QueryRow(ctx, findSOSNearby,
+		arg.DisasterID,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
+	var i FindSOSNearbyRow
+	err := row.Scan(
+		&i.ID,
+		&i.DisasterID,
+		&i.Geometry,
+		&i.ReporterMobile,
+		&i.Message,
+		&i.Status,
+		&i.ReportCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const incrementSOSReportCount = `-- name: IncrementSOSReportCount :one
+UPDATE sos_requests
+SET report_count = report_count + 1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id,
+          disaster_id,
+          COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+          reporter_mobile, message, status, report_count, created_at, updated_at
+`
+
+type IncrementSOSReportCountRow struct {
+	ID             int64       `json:"id"`
+	DisasterID     int32       `json:"disaster_id"`
+	Geometry       interface{} `json:"geometry"`
+	ReporterMobile *string     `json:"reporter_mobile"`
+	Message        *string     `json:"message"`
+	Status         SosStatus   `json:"status"`
+	ReportCount    int32       `json:"report_count"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) IncrementSOSReportCount(ctx context.Context, id int64) (IncrementSOSReportCountRow, error) {
+	row := q.db.QueryRow(ctx, incrementSOSReportCount, id)
+	var i IncrementSOSReportCountRow
+	err := row.Scan(
+		&i.ID,
+		&i.DisasterID,
 		&i.Geometry,
 		&i.ReporterMobile,
 		&i.Message,

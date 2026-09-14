@@ -9,10 +9,12 @@ type CreateSOSRequest struct {
 	Longitude      *float64 `json:"longitude"`
 	ReporterMobile string   `json:"reporter_mobile"`
 	Message        string   `json:"message"`
+	DisasterID     int32    `json:"disaster_id" binding:"required,gt=0"`
 }
 
 type SOSResponse struct {
 	ID             int64    `json:"id"`
+	DisasterID     int32    `json:"disaster_id"`
 	Latitude       *float64 `json:"latitude,omitempty"`
 	Longitude      *float64 `json:"longitude,omitempty"`
 	ReporterMobile string   `json:"reporter_mobile,omitempty"`
@@ -25,6 +27,7 @@ type SOSResponse struct {
 func toSOSResponse(s *SOS) SOSResponse {
 	return SOSResponse{
 		ID:             s.ID,
+		DisasterID:     s.DisasterID,
 		Latitude:       s.Latitude,
 		Longitude:      s.Longitude,
 		ReporterMobile: s.ReporterMobile,

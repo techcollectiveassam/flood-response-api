@@ -14,26 +14,58 @@ var (
 )
 
 type Service struct {
-	repository Repository
+	repository            Repository
+	duplicateRadiusMeters float64
 }
 
-func NewService(repository Repository) *Service {
-	return &Service{repository: repository}
+func NewService(repository Repository, duplicateRadiusMeters float64) *Service {
+	return &Service{
+		repository:            repository,
+		duplicateRadiusMeters: duplicateRadiusMeters,
+	}
 }
 
-func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, error) {
+// CreateSOS creates a new SOS request or merges into a nearby duplicate. The
+// returned boolean reports whether a new row was created.
+func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bool, error) {
 	logger := logging.FromContext(ctx)
 	logger.Debug("create sos request",
+		"disaster_id", req.DisasterID,
 		"latitude", req.Latitude,
 		"longitude", req.Longitude,
 		"reporter_mobile", req.ReporterMobile,
 	)
 
 	if err := validateCreateSOS(req); err != nil {
-		return nil, err
+		return nil, false, err
+	}
+
+	if req.Latitude != nil {
+		geometry := pointGeoJSON(req.Longitude, req.Latitude)
+		matched, err := s.repository.FindNearby(ctx, req.DisasterID, req.ReporterMobile, geometry, s.duplicateRadiusMeters)
+		if err != nil {
+			if apperror.HTTPStatus(err) >= 500 {
+				logger.Error("find nearby sos", "error", err)
+			}
+			return nil, false, err
+		}
+
+		if matched != nil {
+			existing, err := s.repository.IncrementReportCount(ctx, matched.ID)
+			if err != nil {
+				if apperror.HTTPStatus(err) >= 500 {
+					logger.Error("increment sos report count", "error", err)
+				}
+				return nil, false, err
+			}
+
+			logger.Debug("duplicate sos merged", "id", existing.ID, "report_count", existing.ReportCount)
+			return existing, false, nil
+		}
 	}
 
 	sosRequest := &SOS{
+		DisasterID:     req.DisasterID,
 		Latitude:       req.Latitude,
 		Longitude:      req.Longitude,
 		ReporterMobile: req.ReporterMobile,
@@ -45,11 +77,11 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, er
 		if apperror.HTTPStatus(err) >= 500 {
 			logger.Error("create sos", "error", err)
 		}
-		return nil, err
+		return nil, false, err
 	}
 
 	logger.Debug("sos created", "id", sosRequest.ID)
-	return sosRequest, nil
+	return sosRequest, true, nil
 }
 
 func validateCreateSOS(req CreateSOSRequest) error {
