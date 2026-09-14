@@ -77,7 +77,7 @@ func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea)
 	area.Description = database.TextValue(result.Description)
 	area.DisasterID = result.DisasterID
 	area.Location = database.TextValue(result.Location)
-	area.Geometry = geometryValue(result.Geometry)
+	area.Geometry = database.GeometryToText(result.Geometry)
 	area.Latitude = result.Latitude
 	area.Longitude = result.Longitude
 	area.Severity = string(result.Severity)
@@ -125,17 +125,6 @@ func (r *PostgresRepository) IncrementReportCount(ctx context.Context, id int64)
 	return database.TranslateError(err)
 }
 
-func geometryValue(value interface{}) string {
-	switch v := value.(type) {
-	case string:
-		return v
-	case []byte:
-		return string(v)
-	default:
-		return ""
-	}
-}
-
 func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error) {
 	result, err := r.queries.ListAffectedAreas(ctx, sqlcgen.ListAffectedAreasParams{
 		Limit:  int32(limit),
@@ -158,7 +147,7 @@ func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit 
 			Description:        database.TextValue(area.Description),
 			DisasterID:         area.DisasterID,
 			Location:           database.TextValue(area.Location),
-			Geometry:           geometryValue(area.Geometry),
+			Geometry:           database.GeometryToText(area.Geometry),
 			Latitude:           area.Latitude,
 			Longitude:          area.Longitude,
 			Severity:           string(area.Severity),
@@ -185,7 +174,7 @@ func (r *PostgresRepository) GetAffectedArea(ctx context.Context, id int64) (*Af
 		Description:        database.TextValue(result.Description),
 		DisasterID:         result.DisasterID,
 		Location:           database.TextValue(result.Location),
-		Geometry:           geometryValue(result.Geometry),
+		Geometry:           database.GeometryToText(result.Geometry),
 		Latitude:           result.Latitude,
 		Longitude:          result.Longitude,
 		Severity:           string(result.Severity),
