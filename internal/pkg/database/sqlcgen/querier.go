@@ -12,6 +12,7 @@ type Querier interface {
 	CreateAffectedArea(ctx context.Context, arg CreateAffectedAreaParams) (CreateAffectedAreaRow, error)
 	CreateAffectedAreaReport(ctx context.Context, arg CreateAffectedAreaReportParams) (AffectedAreaReport, error)
 	CreateDisaster(ctx context.Context, arg CreateDisasterParams) (CreateDisasterRow, error)
+	CreateSOSRequest(ctx context.Context, arg CreateSOSRequestParams) (CreateSOSRequestRow, error)
 	GetAffectedArea(ctx context.Context, id int64) (GetAffectedAreaRow, error)
 	GetAffectedAreaReportByID(ctx context.Context, id int64) (AffectedAreaReport, error)
 	GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error)
