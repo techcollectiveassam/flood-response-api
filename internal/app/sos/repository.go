@@ -16,6 +16,7 @@ type Repository interface {
 	Create(ctx context.Context, sos *SOS) error
 	FindNearby(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error)
 	IncrementReportCount(ctx context.Context, id int64) (*SOS, error)
+	ListSOS(ctx context.Context, page, limit int) ([]*SOS, int64, error)
 }
 
 type PostgresRepository struct {
@@ -130,4 +131,24 @@ func coordinatesFromGeometry(value interface{}) (*float64, *float64) {
 	latitude := payload.Coordinates[1]
 	longitude := payload.Coordinates[0]
 	return &latitude, &longitude
+}
+
+func (r *PostgresRepository) ListSOS(ctx context.Context, page, limit int) ([]*SOS, int64, error) {
+	result, err := r.queries.ListSOSRequests(ctx, sqlcgen.ListSOSRequestsParams{
+		Limit:  int32(limit),
+		Offset: int32((page - 1) * limit),
+	})
+	if err != nil {
+		return nil, 0, database.TranslateError(err)
+	}
+	var total int64
+	if len(result) > 0 {
+		total = result[0].TotalCount
+	}
+
+	sosList := make([]*SOS, len(result))
+	for i, row := range result {
+		sosList[i] = sosFromRow(row.ID, row.DisasterID, row.Geometry, row.ReporterMobile, row.Message, row.Status, row.ReportCount, row.CreatedAt, row.UpdatedAt)
+	}
+	return sosList, total, nil
 }

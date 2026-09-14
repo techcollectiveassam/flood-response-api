@@ -10,6 +10,9 @@ type mockRepository struct {
 	findNearbyErr    error
 	incrementErr     error
 	createErr        error
+	listResults      []*SOS
+	listTotal        int64
+	listErr          error
 
 	findNearbyCalled bool
 	findNearbyMobile string
@@ -46,4 +49,11 @@ func (m *mockRepository) IncrementReportCount(ctx context.Context, id int64) (*S
 	s := *m.findNearbyResult
 	s.ReportCount++
 	return &s, nil
+}
+
+func (m *mockRepository) ListSOS(ctx context.Context, page, limit int) ([]*SOS, int64, error) {
+	if m.listErr != nil {
+		return nil, 0, m.listErr
+	}
+	return m.listResults, m.listTotal, nil
 }

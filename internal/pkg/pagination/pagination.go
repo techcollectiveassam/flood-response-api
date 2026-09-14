@@ -25,6 +25,13 @@ type Query struct {
 	Limit *int `form:"limit" binding:"omitempty,min=1"`
 }
 
+// Result holds a single page of items together with the total number of
+// items across all pages for the underlying query.
+type Result[T any] struct {
+	Items []T
+	Total int64
+}
+
 func ParamsFromConfig(cfg *config.Config) Params {
 	if cfg == nil {
 		return Params{}

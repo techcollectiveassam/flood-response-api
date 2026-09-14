@@ -169,3 +169,63 @@ func (q *Queries) IncrementSOSReportCount(ctx context.Context, id int64) (Increm
 	)
 	return i, err
 }
+
+const listSOSRequests = `-- name: ListSOSRequests :many
+SELECT id,
+       disaster_id,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       reporter_mobile, message, status, report_count, created_at, updated_at,
+       COUNT(*) OVER() AS total_count
+FROM sos_requests
+ORDER BY created_at DESC, id DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListSOSRequestsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListSOSRequestsRow struct {
+	ID             int64       `json:"id"`
+	DisasterID     int32       `json:"disaster_id"`
+	Geometry       interface{} `json:"geometry"`
+	ReporterMobile *string     `json:"reporter_mobile"`
+	Message        *string     `json:"message"`
+	Status         SosStatus   `json:"status"`
+	ReportCount    int32       `json:"report_count"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	TotalCount     int64       `json:"total_count"`
+}
+
+func (q *Queries) ListSOSRequests(ctx context.Context, arg ListSOSRequestsParams) ([]ListSOSRequestsRow, error) {
+	rows, err := q.db.Query(ctx, listSOSRequests, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSOSRequestsRow{}
+	for rows.Next() {
+		var i ListSOSRequestsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DisasterID,
+			&i.Geometry,
+			&i.ReporterMobile,
+			&i.Message,
+			&i.Status,
+			&i.ReportCount,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.TotalCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

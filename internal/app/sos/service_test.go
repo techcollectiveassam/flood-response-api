@@ -173,3 +173,57 @@ func location(latitude, longitude float64) *Location {
 func fp(value float64) *float64 {
 	return &value
 }
+
+func TestListSOS(t *testing.T) {
+	tests := []struct {
+		name      string
+		results   []*SOS
+		total     int64
+		repoErr   error
+		wantErr   error
+		wantTotal int64
+		wantLen   int
+	}{
+		{
+			name: "success",
+			results: []*SOS{
+				{ID: 2, DisasterID: 7, Status: "reported", ReportCount: 2},
+				{ID: 1, DisasterID: 8, Status: "reported", ReportCount: 1},
+			},
+			total:     2,
+			wantTotal: 2,
+			wantLen:   2,
+		},
+		{
+			name:      "empty",
+			results:   []*SOS{},
+			total:     0,
+			wantTotal: 0,
+			wantLen:   0,
+		},
+		{
+			name:    "repository error",
+			repoErr: assert.AnError,
+			wantErr: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepository{listResults: tt.results, listTotal: tt.total, listErr: tt.repoErr}
+			svc := NewService(repo, 100)
+
+			result, err := svc.ListSOS(context.Background(), 1, 20)
+
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, result)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantTotal, result.Total)
+			assert.Len(t, result.Items, tt.wantLen)
+		})
+	}
+}

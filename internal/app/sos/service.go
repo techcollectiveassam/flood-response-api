@@ -5,6 +5,7 @@ import (
 
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/pagination"
 )
 
 var (
@@ -114,4 +115,18 @@ func locationLongitude(location *Location) *float64 {
 		return nil
 	}
 	return location.Longitude
+}
+
+func (s *Service) ListSOS(ctx context.Context, page, limit int) (*pagination.Result[*SOS], error) {
+	logger := logging.FromContext(ctx)
+	sosList, total, err := s.repository.ListSOS(ctx, page, limit)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("list sos", "error", err)
+		}
+		return nil, err
+	}
+
+	logger.Debug("sos listed", "count", len(sosList), "total", total)
+	return &pagination.Result[*SOS]{Items: sosList, Total: total}, nil
 }

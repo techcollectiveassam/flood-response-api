@@ -21,6 +21,7 @@ type Querier interface {
 	IncrementSOSReportCount(ctx context.Context, id int64) (IncrementSOSReportCountRow, error)
 	ListAffectedAreas(ctx context.Context, arg ListAffectedAreasParams) ([]ListAffectedAreasRow, error)
 	ListDisasters(ctx context.Context) ([]ListDisastersRow, error)
+	ListSOSRequests(ctx context.Context, arg ListSOSRequestsParams) ([]ListSOSRequestsRow, error)
 	UpdateAreaSeverity(ctx context.Context, arg UpdateAreaSeverityParams) (AffectedAreaSeverity, error)
 }
 
