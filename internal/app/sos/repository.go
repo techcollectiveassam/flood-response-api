@@ -69,9 +69,10 @@ func pointGeoJSON(longitude, latitude *float64) string {
 }
 
 // coordinatesFromGeometry reads the latitude/longitude back out of the
-// database's geom column (returned as GeoJSON). A NULL geom yields nil values.
+// database's geom column, which PostGIS returns as GeoJSON text. A NULL geom
+// yields nil values.
 func coordinatesFromGeometry(value interface{}) (*float64, *float64) {
-	geometry := geometryValue(value)
+	geometry := database.GeometryToText(value)
 	if geometry == "" {
 		return nil, nil
 	}
@@ -90,15 +91,4 @@ func coordinatesFromGeometry(value interface{}) (*float64, *float64) {
 	latitude := payload.Coordinates[1]
 	longitude := payload.Coordinates[0]
 	return &latitude, &longitude
-}
-
-func geometryValue(value interface{}) string {
-	switch v := value.(type) {
-	case string:
-		return v
-	case []byte:
-		return string(v)
-	default:
-		return ""
-	}
 }
