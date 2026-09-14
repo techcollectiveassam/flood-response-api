@@ -31,8 +31,6 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bo
 	logger := logging.FromContext(ctx)
 	logger.Debug("create sos request",
 		"disaster_id", req.DisasterID,
-		"latitude", req.Latitude,
-		"longitude", req.Longitude,
 		"reporter_mobile", req.ReporterMobile,
 	)
 
@@ -40,8 +38,8 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bo
 		return nil, false, err
 	}
 
-	if req.Latitude != nil {
-		geometry := pointGeoJSON(req.Longitude, req.Latitude)
+	if req.Location != nil && req.Location.Latitude != nil {
+		geometry := pointGeoJSON(req.Location.Longitude, req.Location.Latitude)
 		matched, err := s.repository.FindNearby(ctx, req.DisasterID, req.ReporterMobile, geometry, s.duplicateRadiusMeters)
 		if err != nil {
 			if apperror.HTTPStatus(err) >= 500 {
@@ -66,8 +64,8 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bo
 
 	sosRequest := &SOS{
 		DisasterID:     req.DisasterID,
-		Latitude:       req.Latitude,
-		Longitude:      req.Longitude,
+		Latitude:       locationLatitude(req.Location),
+		Longitude:      locationLongitude(req.Location),
 		ReporterMobile: req.ReporterMobile,
 		Message:        req.Message,
 		Status:         StatusReported,
@@ -86,19 +84,34 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bo
 
 func validateCreateSOS(req CreateSOSRequest) error {
 	hasMobile := req.ReporterMobile != ""
-	hasLatitude := req.Latitude != nil
-	hasLongitude := req.Longitude != nil
+	hasLocation := req.Location != nil &&
+		(req.Location.Latitude != nil || req.Location.Longitude != nil)
 
-	if !hasMobile && !hasLatitude && !hasLongitude {
+	if !hasMobile && !hasLocation {
 		return ErrInvalidSOS
 	}
-	if hasLatitude != hasLongitude {
-		return ErrInvalidLocation
-	}
-	if hasLatitude {
-		if *req.Latitude < -90 || *req.Latitude > 90 || *req.Longitude < -180 || *req.Longitude > 180 {
+	if hasLocation {
+		if req.Location.Latitude == nil || req.Location.Longitude == nil {
+			return ErrInvalidLocation
+		}
+		if *req.Location.Latitude < -90 || *req.Location.Latitude > 90 ||
+			*req.Location.Longitude < -180 || *req.Location.Longitude > 180 {
 			return ErrInvalidCoordinate
 		}
 	}
 	return nil
+}
+
+func locationLatitude(location *Location) *float64 {
+	if location == nil {
+		return nil
+	}
+	return location.Latitude
+}
+
+func locationLongitude(location *Location) *float64 {
+	if location == nil {
+		return nil
+	}
+	return location.Longitude
 }

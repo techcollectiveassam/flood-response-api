@@ -25,8 +25,7 @@ func TestCreateSOS(t *testing.T) {
 			name: "creates when no nearby match",
 			req: CreateSOSRequest{
 				DisasterID: 7,
-				Latitude:   fp(26.18),
-				Longitude:  fp(91.73),
+				Location:   location(26.18, 91.73),
 			},
 			wantFindNearby: true,
 			wantCreated:    true,
@@ -36,8 +35,7 @@ func TestCreateSOS(t *testing.T) {
 			name: "merges into nearby match",
 			req: CreateSOSRequest{
 				DisasterID: 7,
-				Latitude:   fp(26.18),
-				Longitude:  fp(91.73),
+				Location:   location(26.18, 91.73),
 			},
 			findNearby:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
 			wantFindNearby: true,
@@ -49,9 +47,8 @@ func TestCreateSOS(t *testing.T) {
 			name: "mobile scopes the nearby lookup",
 			req: CreateSOSRequest{
 				DisasterID:     7,
-				Latitude:       fp(26.18),
-				Longitude:      fp(91.73),
 				ReporterMobile: "9876543210",
+				Location:       location(26.18, 91.73),
 			},
 			findNearby:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
 			wantFindNearby: true,
@@ -71,6 +68,17 @@ func TestCreateSOS(t *testing.T) {
 			wantCreates:    1,
 		},
 		{
+			name: "empty location with mobile creates without geometry",
+			req: CreateSOSRequest{
+				DisasterID:     7,
+				ReporterMobile: "9876543210",
+				Location:       &Location{},
+			},
+			wantFindNearby: false,
+			wantCreated:    true,
+			wantCreates:    1,
+		},
+		{
 			name: "missing mobile and location",
 			req: CreateSOSRequest{
 				DisasterID: 7,
@@ -78,10 +86,18 @@ func TestCreateSOS(t *testing.T) {
 			wantErr: ErrInvalidSOS,
 		},
 		{
+			name: "empty location object without mobile",
+			req: CreateSOSRequest{
+				DisasterID: 7,
+				Location:   &Location{},
+			},
+			wantErr: ErrInvalidSOS,
+		},
+		{
 			name: "partial location",
 			req: CreateSOSRequest{
 				DisasterID: 7,
-				Latitude:   fp(26.18),
+				Location:   &Location{Latitude: fp(26.18)},
 			},
 			wantErr: ErrInvalidLocation,
 		},
@@ -89,8 +105,7 @@ func TestCreateSOS(t *testing.T) {
 			name: "out of range coordinate",
 			req: CreateSOSRequest{
 				DisasterID: 7,
-				Latitude:   fp(95),
-				Longitude:  fp(91.73),
+				Location:   location(95, 91.73),
 			},
 			wantErr: ErrInvalidCoordinate,
 		},
@@ -98,8 +113,7 @@ func TestCreateSOS(t *testing.T) {
 			name: "find nearby error",
 			req: CreateSOSRequest{
 				DisasterID: 7,
-				Latitude:   fp(26.18),
-				Longitude:  fp(91.73),
+				Location:   location(26.18, 91.73),
 			},
 			findNearbyErr:  assert.AnError,
 			wantErr:        assert.AnError,
@@ -109,8 +123,7 @@ func TestCreateSOS(t *testing.T) {
 			name: "create repository error",
 			req: CreateSOSRequest{
 				DisasterID: 7,
-				Latitude:   fp(26.18),
-				Longitude:  fp(91.73),
+				Location:   location(26.18, 91.73),
 			},
 			repoErr:        assert.AnError,
 			wantErr:        assert.AnError,
@@ -151,6 +164,10 @@ func TestCreateSOS(t *testing.T) {
 			}
 		})
 	}
+}
+
+func location(latitude, longitude float64) *Location {
+	return &Location{Latitude: fp(latitude), Longitude: fp(longitude)}
 }
 
 func fp(value float64) *float64 {
