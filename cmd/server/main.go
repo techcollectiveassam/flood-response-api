@@ -12,6 +12,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/techcollectiveassam/flood-response-api/internal/api"
+	"github.com/techcollectiveassam/flood-response-api/internal/api/docs"
 	"github.com/techcollectiveassam/flood-response-api/internal/app"
 )
 
@@ -28,6 +29,8 @@ func main() {
 	features := app.NewFeatures(application)
 
 	router := api.NewRouter(features, logger)
+
+	docs.Register(router)
 
 	server := &http.Server{
 		Addr:    ":" + application.Config.Port,
