@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate test verify
+.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate docs-build test verify
 
 # Load .env so MIGRATIONS_DIR etc. are available if needed locally
 ifneq (,$(wildcard .env))
@@ -53,6 +53,11 @@ migrate-reset: db-up ## Roll back ALL migrations (destructive — dev only)
 
 sqlc-generate: ## Regenerate sqlc code from queries/ and migrations/
 	docker run --rm -v "$(CURDIR):/src" -w /src sqlc/sqlc generate
+
+## --- API Docs (Redoc, via the node:alpine image — no local install needed) ---
+
+docs-build: ## Regenerate the embedded Redoc page (internal/api/docs/static) from docs/openapi.yaml
+	docker run --rm -v "$(CURDIR):/src" -w /src node:22-alpine sh -c "node /src/scripts/docs-build.mjs"
 
 ## --- Testing ---
 
