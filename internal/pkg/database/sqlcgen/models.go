@@ -186,6 +186,50 @@ func (ns NullDisasterType) Value() (driver.Value, error) {
 	return string(ns.DisasterType), nil
 }
 
+type SosStatus string
+
+const (
+	SosStatusReported  SosStatus = "reported"
+	SosStatusActive    SosStatus = "active"
+	SosStatusResolved  SosStatus = "resolved"
+	SosStatusCancelled SosStatus = "cancelled"
+)
+
+func (e *SosStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SosStatus(s)
+	case string:
+		*e = SosStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SosStatus: %T", src)
+	}
+	return nil
+}
+
+type NullSosStatus struct {
+	SosStatus SosStatus `json:"sos_status"`
+	Valid     bool      `json:"valid"` // Valid is true if SosStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSosStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.SosStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SosStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSosStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SosStatus), nil
+}
+
 type AffectedArea struct {
 	ID                 int64                          `json:"id"`
 	Name               string                         `json:"name"`
@@ -226,4 +270,16 @@ type Disaster struct {
 	EndsAt      pgtype.Timestamptz `json:"ends_at"`
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
+}
+
+type SosRequest struct {
+	ID             int64       `json:"id"`
+	Geom           interface{} `json:"geom"`
+	ReporterMobile *string     `json:"reporter_mobile"`
+	Message        *string     `json:"message"`
+	Status         SosStatus   `json:"status"`
+	ReportCount    int32       `json:"report_count"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	DisasterID     int32       `json:"disaster_id"`
 }

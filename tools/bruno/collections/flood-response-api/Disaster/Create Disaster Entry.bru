@@ -1,0 +1,20 @@
+meta {
+  name: Create Disaster Entry
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/disasters
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Assam Flood",
+    "description": "Situation on the ground",
+    "type": "flood",
+    "starts_at": "2026-09-17T00:00:00Z"
+  }
+}

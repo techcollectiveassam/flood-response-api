@@ -62,6 +62,47 @@ func TestLoadRejectsInvalidDatabasePoolSize(t *testing.T) {
 	}
 }
 
+func TestLoadUsesSosDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://user:password@db:5432/flood_response?sslmode=disable")
+	t.Setenv("SOS_DUPLICATE_RADIUS_METERS", "")
+
+	configuration, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if configuration.Sos.DuplicateRadiusMeters != 100 {
+		t.Errorf("DuplicateRadiusMeters = %g, want 100", configuration.Sos.DuplicateRadiusMeters)
+	}
+}
+
+func TestLoadReadsSosRadius(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://user:password@db:5432/flood_response?sslmode=disable")
+	t.Setenv("SOS_DUPLICATE_RADIUS_METERS", "250")
+
+	configuration, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if configuration.Sos.DuplicateRadiusMeters != 250 {
+		t.Errorf("DuplicateRadiusMeters = %g, want 250", configuration.Sos.DuplicateRadiusMeters)
+	}
+}
+
+func TestLoadRejectsInvalidSosRadius(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://user:password@db:5432/flood_response?sslmode=disable")
+	t.Setenv("SOS_DUPLICATE_RADIUS_METERS", "invalid")
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("Load() error = nil, want an error")
+	}
+	if !strings.Contains(err.Error(), "SOS_DUPLICATE_RADIUS_METERS") {
+		t.Errorf("Load() error = %q, want SOS_DUPLICATE_RADIUS_METERS", err)
+	}
+}
+
 func TestLoadRejectsMaxLimitBelowDefaultLimit(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://user:password@db:5432/flood_response?sslmode=disable")
 	t.Setenv("PAGINATION_DEFAULT_LIMIT", "50")
