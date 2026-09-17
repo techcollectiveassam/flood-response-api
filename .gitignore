@@ -40,11 +40,5 @@ temp/
 # Docker
 docker-compose.override.yml
 
-# Postman
-.postman/
-.postman_collection.json
-.postman_environment.json
-postman
-
 # delve
 __debug*

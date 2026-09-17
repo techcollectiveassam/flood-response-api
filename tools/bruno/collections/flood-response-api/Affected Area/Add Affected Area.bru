@@ -1,0 +1,28 @@
+meta {
+  name: Add Affected Area
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": 1,
+    "name": "Dhemaji river bank",
+    "location": {
+      "source": "gps",
+      "latitude": 26.2,
+      "longitude": 91.8
+    },
+    "severity": "medium",
+    "reporter": {
+      "name": "Rakesh",
+      "mobile": "+919876543210"
+    }
+  }
+}
