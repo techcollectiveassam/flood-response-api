@@ -1,0 +1,33 @@
+meta {
+  name: Create disaster - missing name
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/disasters
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "type": "flood"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("missing name is reported as validation error", function() {
+    const err = res.getBody().error;
+    const name = err.details.find(d => d.field === 'name');
+    expect(name).to.be.an('object');
+    expect(name.message).to.equal('name is required');
+  });
+}
