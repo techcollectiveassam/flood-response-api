@@ -1,0 +1,46 @@
+meta {
+  name: Create affected area - place_search missing latitude
+  type: http
+  seq: 23
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Barpeta town market",
+    "location": {
+      "source": "place_search",
+      "name": "Barpeta Market",
+      "longitude": 91.01
+    },
+    "severity": "medium"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_location
+}
+
+tests {
+  test("place_search source without latitude is rejected", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'invalid_location');
+    expect(err).to.have.property('message', 'latitude and longitude are required for place_search source');
+  });
+}

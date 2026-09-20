@@ -1,0 +1,53 @@
+meta {
+  name: Create affected area - valid map point
+  type: http
+  seq: 27
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Dibrugarh point",
+    "location": {
+      "source": "map",
+      "name": "Dibrugarh",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [94.9, 27.4]
+      }
+    },
+    "severity": "high"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("map source with point geometry creates an area", function() {
+    const data = res.getBody().data;
+    const area = data.affected_area;
+    expect(area).to.have.property('id');
+    expect(area).to.have.property('name', 'Dibrugarh point');
+    expect(area).to.have.property('severity', 'high');
+    expect(area).to.have.property('geometry');
+    expect(data).to.have.property('is_new_area', true);
+    expect(data).to.have.property('match_reason', 'none');
+  });
+}

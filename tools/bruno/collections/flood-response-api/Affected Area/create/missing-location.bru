@@ -1,0 +1,42 @@
+meta {
+  name: Create affected area - missing location
+  type: http
+  seq: 11
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Dhemaji river bank",
+    "severity": "medium"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("missing location is reported as validation error", function() {
+    const err = res.getBody().error;
+    const location = err.details.find(d => d.field === 'location');
+    expect(location).to.be.an('object');
+    expect(location.message).to.equal('location is required');
+  });
+}
