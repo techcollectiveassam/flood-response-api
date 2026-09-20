@@ -126,7 +126,7 @@ paths:
               severity: medium
               reporter:
                 name: Rakesh
-mobile: "0000000000"
+                mobile: "0000000000"
       responses:
         "201":
           description: Affected area reported (new or matched)
