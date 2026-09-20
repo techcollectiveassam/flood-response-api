@@ -40,7 +40,8 @@ assert {
 tests {
   test("non-numeric longitude is rejected", function() {
     const err = res.getBody().error;
-    const longitude = err.details.find(d => d.field === 'longitude');
+    const longitude = err.details.find(d => d.field === 'location.longitude');
     expect(longitude).to.be.an('object');
+    expect(longitude.message).to.equal('location.longitude must be a number');
   });
 }

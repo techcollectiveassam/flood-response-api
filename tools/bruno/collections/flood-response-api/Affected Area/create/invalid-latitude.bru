@@ -40,7 +40,7 @@ assert {
 tests {
   test("non-numeric latitude is rejected", function() {
     const err = res.getBody().error;
-    const latitude = err.details.find(d => d.field === 'latitude');
+    const latitude = err.details.find(d => d.field === 'location.latitude');
     expect(latitude).to.be.an('object');
   });
 }
