@@ -42,3 +42,6 @@ docker-compose.override.yml
 
 # delve
 __debug*
+
+# bruno
+tools/bruno/collections/flood-response-api/environments/local.bru

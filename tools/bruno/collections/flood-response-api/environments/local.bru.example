@@ -1,0 +1,10 @@
+# Copy this file to local.bru and set the values for your machine.
+# This is an example only; the values below are placeholders.
+
+vars {
+  baseUrl: http://localhost:8080
+  @number
+  disasterId: 1
+  @number
+  affectedAreaId: 1
+}

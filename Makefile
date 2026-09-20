@@ -1,4 +1,4 @@
-.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate docs-build test verify
+.PHONY: migrate-up migrate-down migrate-status migrate-create migrate-reset db-up sqlc-generate docs-build bruno-local-env test verify
 
 # Load .env so MIGRATIONS_DIR etc. are available if needed locally
 ifneq (,$(wildcard .env))
@@ -58,6 +58,12 @@ sqlc-generate: ## Regenerate sqlc code from queries/ and migrations/
 
 docs-build: ## Regenerate the embedded Redoc page (internal/api/docs/static) from docs/openapi.yaml
 	docker run --rm -v "$(CURDIR):/src" -w /src node:22-alpine sh -c "node /src/scripts/docs-build.mjs"
+
+## --- Bruno ---
+
+bruno-local-env: ## Generate the Bruno local environment from local.bru.example
+	cp tools/bruno/collections/flood-response-api/environments/local.bru.example tools/bruno/collections/flood-response-api/environments/local.bru
+	@echo "Created tools/bruno/collections/flood-response-api/environments/local.bru — edit it with your machine's values."
 
 ## --- Testing ---
 
