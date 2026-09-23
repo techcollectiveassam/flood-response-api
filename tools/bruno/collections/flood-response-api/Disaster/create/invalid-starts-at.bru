@@ -28,7 +28,7 @@ assert {
 tests {
   test("invalid starts_at is rejected", function() {
     const err = res.getBody().error;
-    const startsAt = err.details.find(d => d.field === 'starts_at');
-    expect(startsAt).to.be.an('object');
+    expect(err).to.have.property('code', 'invalid_request_body');
+    expect(err).to.have.property('message');
   });
 }

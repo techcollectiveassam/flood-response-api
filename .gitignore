@@ -15,6 +15,7 @@ bin/
 coverage.out
 coverage.html
 *.coverprofile
+test-results/
 
 # Build
 dist/
