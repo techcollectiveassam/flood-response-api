@@ -36,6 +36,14 @@ The API is available at:
 http://localhost:8080
 ```
 
+The  API reference (Redocly) is served by the app at:
+
+```text
+http://localhost:8080/docs
+```
+
+It is generated from `docs/openapi.yaml` — regenerate with `make docs-build` after editing the spec.
+
 ## Check application health
 
 After the stack starts, confirm the API is running:
@@ -102,6 +110,27 @@ Both require the app container to be running (`make up` / `docker compose up -d`
 - **Run the Bruno collection against the running dev stack (fast inner loop)** — `make test-bruno`
 
   Runs the collection through the same `usebruno/cli` container on the dev network. Requires the dev stack to be up (`make up`). Unlike `e2e` it reuses existing dev data — the **Disaster** folder runs first and captures IDs from existing data (creating a new disaster only when the API is empty) — so tests that assume fresh IDs may fail; use `e2e` for an authoritative run. JUnit output is written to `test-results/bruno-junit.xml`.
+
+### Bruno API collection
+
+The API collection is tracked in this repository and works with [Bruno](https://www.usebruno.com/) (GUI and CLI) — everything lives in `tools/bruno/collections/flood-response-api/` and is versioned alongside the code, with no external API client needed to explore the endpoints.
+
+**Using the collection in the local Bruno GUI:**
+
+1. Install the [Bruno desktop client](https://www.usebruno.com/download) and open it.
+2. **File → Open Collection**, then select the `tools/bruno/collections/flood-response-api` folder (the one containing `bruno.json`).
+3. Create your local environment (gitignored so you can't accidentally commit it): `make bruno-local-env` copies `environments/local.bru.example` → `environments/local.bru` with `baseUrl: http://localhost:8080`.
+4. Start the dev stack with `make up`, then select the **local** environment (bottom-right of the Bruno window).
+5. Run a single request, a folder, or the whole collection. Run the **Disaster** folder first — it captures the reference `disasterId` (creating a disaster if the database is empty), and later requests use it automatically.
+
+**Environments:**
+
+| Environment | `baseUrl` | Used for |
+| --- | --- | --- |
+| `ci` | `http://app:8080` | CLI/CI runs (`make e2e`, `make test-bruno`) |
+| `local` | `http://localhost:8080` | Local GUI runs (gitignored; generate with `make bruno-local-env`) |
+| `staging` | *(empty — fill in the GUI)* | GUI runs against the staging deployment |
+| `local.bru.example` | `http://localhost:8080` | Committed template for `local.bru` |
 
 ### Migrations (Goose)
 
