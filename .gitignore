@@ -15,6 +15,7 @@ bin/
 coverage.out
 coverage.html
 *.coverprofile
+test-results/
 
 # Build
 dist/
@@ -42,3 +43,6 @@ docker-compose.override.yml
 
 # delve
 __debug*
+
+# bruno
+tools/bruno/collections/flood-response-api/environments/local.bru

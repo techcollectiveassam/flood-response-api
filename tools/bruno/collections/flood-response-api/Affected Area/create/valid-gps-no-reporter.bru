@@ -1,0 +1,52 @@
+meta {
+  name: Create affected area - valid gps no reporter
+  type: http
+  seq: 28
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Nagaon riverside",
+    "location": {
+      "source": "gps",
+      "name": "Nagaon riverside",
+      "latitude": 26.35,
+      "longitude": 92.68
+    },
+    "severity": "low"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("reporter is optional", function() {
+    const data = res.getBody().data;
+    const area = data.affected_area;
+    expect(area).to.have.property('id');
+    expect(area).to.have.property('name', 'Nagaon riverside');
+    expect(area).to.have.property('severity', 'low');
+    expect(area.latitude).to.equal(26.35);
+    expect(area.longitude).to.equal(92.68);
+    expect(data).to.have.property('is_new_area', true);
+    expect(data.report.reporter).to.be.undefined;
+  });
+}

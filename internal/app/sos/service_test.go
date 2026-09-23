@@ -47,12 +47,12 @@ func TestCreateSOS(t *testing.T) {
 			name: "mobile scopes the nearby lookup",
 			req: CreateSOSRequest{
 				DisasterID:     7,
-				ReporterMobile: "9876543210",
+				ReporterMobile: "0000000000",
 				Location:       location(26.18, 91.73),
 			},
 			findNearby:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
 			wantFindNearby: true,
-			wantMobile:     "9876543210",
+			wantMobile:     "0000000000",
 			wantCreated:    false,
 			wantIncrements: 1,
 			wantCreates:    0,
@@ -61,7 +61,7 @@ func TestCreateSOS(t *testing.T) {
 			name: "mobile only skips nearby lookup",
 			req: CreateSOSRequest{
 				DisasterID:     7,
-				ReporterMobile: "9876543210",
+				ReporterMobile: "0000000000",
 			},
 			wantFindNearby: false,
 			wantCreated:    true,
@@ -71,7 +71,7 @@ func TestCreateSOS(t *testing.T) {
 			name: "empty location with mobile creates without geometry",
 			req: CreateSOSRequest{
 				DisasterID:     7,
-				ReporterMobile: "9876543210",
+				ReporterMobile: "0000000000",
 				Location:       &Location{},
 			},
 			wantFindNearby: false,

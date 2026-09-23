@@ -126,7 +126,7 @@ paths:
               severity: medium
               reporter:
                 name: Rakesh
-                mobile: "+919876543210"
+                mobile: "0000000000"
       responses:
         "201":
           description: Affected area reported (new or matched)
@@ -194,7 +194,7 @@ paths:
               $ref: "#/components/schemas/CreateSOSRequest"
             example:
               disaster_id: 1
-              reporter_mobile: "+919876543210"
+              reporter_mobile: "0000000000"
               message: Water level rising rapidly
               location:
                 latitude: 26.29
