@@ -1,0 +1,26 @@
+meta {
+  name: Get a disaster - not found
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/disasters/999999
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq disaster_not_found
+}
+
+tests {
+  test("unknown id returns a 404", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'disaster_not_found');
+    expect(err).to.have.property('message');
+  });
+}

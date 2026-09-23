@@ -1,0 +1,46 @@
+meta {
+  name: Create affected area - invalid latitude
+  type: http
+  seq: 15
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Dhemaji river bank",
+    "location": {
+      "source": "gps",
+      "latitude": "abc",
+      "longitude": 91.8
+    },
+    "severity": "medium"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("non-numeric latitude is rejected", function() {
+    const err = res.getBody().error;
+    const latitude = err.details.find(d => d.field === 'location.latitude');
+    expect(latitude).to.be.an('object');
+  });
+}

@@ -11,4 +11,5 @@ README.md
 
 tmp/
 coverage/
+test-results/
 *.log

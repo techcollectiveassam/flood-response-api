@@ -1,0 +1,46 @@
+meta {
+  name: Create affected area - invalid severity
+  type: http
+  seq: 10
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Dhemaji river bank",
+    "location": {
+      "source": "gps",
+      "latitude": 26.2,
+      "longitude": 91.8
+    },
+    "severity": "extreme"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("unsupported severity is rejected", function() {
+    const err = res.getBody().error;
+    const severity = err.details.find(d => d.field === 'severity');
+    expect(severity).to.be.an('object');
+  });
+}

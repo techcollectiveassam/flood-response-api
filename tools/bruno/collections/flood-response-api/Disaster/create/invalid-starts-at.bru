@@ -1,0 +1,34 @@
+meta {
+  name: Create disaster - invalid starts_at
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/disasters
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Assam Flood",
+    "type": "flood",
+    "starts_at": "not-a-date"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("invalid starts_at is rejected", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'invalid_request_body');
+    expect(err).to.have.property('message');
+  });
+}

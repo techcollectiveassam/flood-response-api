@@ -1,0 +1,9 @@
+# Compose override for `make e2e` (scripts/e2e.sh).
+# Suppresses published host ports so E2E containers run in complete isolation
+# on their own project network without conflicting with running dev containers.
+services:
+  app:
+    ports: !reset []
+
+  db:
+    ports: !reset []

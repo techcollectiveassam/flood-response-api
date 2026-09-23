@@ -1,0 +1,60 @@
+meta {
+  name: Create affected area - valid map
+  type: http
+  seq: 3
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Majuli island flood belt",
+    "location": {
+      "source": "map",
+      "name": "Majuli",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [91.5, 26.5],
+            [91.9, 26.5],
+            [91.9, 26.9],
+            [91.5, 26.9],
+            [91.5, 26.5]
+          ]
+        ]
+      }
+    },
+    "severity": "critical"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("map source with geometry creates an area", function() {
+    const data = res.getBody().data;
+    const area = data.affected_area;
+    expect(area).to.have.property('id');
+    expect(area).to.have.property('name', 'Majuli island flood belt');
+    expect(area).to.have.property('severity', 'critical');
+    expect(area).to.have.property('geometry');
+    expect(data).to.have.property('is_new_area', true);
+  });
+}

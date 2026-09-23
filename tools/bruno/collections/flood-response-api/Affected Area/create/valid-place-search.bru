@@ -1,0 +1,51 @@
+meta {
+  name: Create affected area - valid place_search
+  type: http
+  seq: 2
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Barpeta town market",
+    "location": {
+      "source": "place_search",
+      "name": "Barpeta Market",
+      "latitude": 26.32,
+      "longitude": 91.01
+    },
+    "severity": "medium"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("place_search source creates an area", function() {
+    const data = res.getBody().data;
+    const area = data.affected_area;
+    expect(area).to.have.property('id');
+    expect(area).to.have.property('name', 'Barpeta town market');
+    expect(area).to.have.property('severity', 'medium');
+    expect(area.latitude).to.equal(26.32);
+    expect(area.longitude).to.equal(91.01);
+    expect(data).to.have.property('is_new_area', true);
+  });
+}

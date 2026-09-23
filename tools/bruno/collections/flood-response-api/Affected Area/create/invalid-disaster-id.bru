@@ -1,0 +1,39 @@
+meta {
+  name: Create affected area - invalid disaster_id
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": "abc",
+    "name": "Dhemaji river bank",
+    "location": {
+      "source": "gps",
+      "latitude": 26.2,
+      "longitude": 91.8
+    },
+    "severity": "medium"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("non-numeric disaster_id is rejected", function() {
+    const err = res.getBody().error;
+    const disaster = err.details.find(d => d.field === 'disaster_id');
+    expect(disaster).to.be.an('object');
+  });
+}
