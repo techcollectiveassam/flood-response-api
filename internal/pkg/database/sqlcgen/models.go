@@ -101,6 +101,50 @@ func (ns NullAffectedAreaVerificationStatus) Value() (driver.Value, error) {
 	return string(ns.AffectedAreaVerificationStatus), nil
 }
 
+type CommandCenterType string
+
+const (
+	CommandCenterTypeGovernment CommandCenterType = "government"
+	CommandCenterTypeNgo        CommandCenterType = "ngo"
+	CommandCenterTypeGroup      CommandCenterType = "group"
+	CommandCenterTypeOther      CommandCenterType = "other"
+)
+
+func (e *CommandCenterType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = CommandCenterType(s)
+	case string:
+		*e = CommandCenterType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for CommandCenterType: %T", src)
+	}
+	return nil
+}
+
+type NullCommandCenterType struct {
+	CommandCenterType CommandCenterType `json:"command_center_type"`
+	Valid             bool              `json:"valid"` // Valid is true if CommandCenterType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullCommandCenterType) Scan(value interface{}) error {
+	if value == nil {
+		ns.CommandCenterType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.CommandCenterType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullCommandCenterType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.CommandCenterType), nil
+}
+
 type DisasterStatus string
 
 const (
@@ -258,6 +302,19 @@ type AffectedAreaReport struct {
 	ReporterName    *string              `json:"reporter_name"`
 	ReporterMobile  *string              `json:"reporter_mobile"`
 	CreatedAt       time.Time            `json:"created_at"`
+}
+
+type CommandCenter struct {
+	ID            int32             `json:"id"`
+	Name          string            `json:"name"`
+	Type          CommandCenterType `json:"type"`
+	Description   *string           `json:"description"`
+	ContactPerson *string           `json:"contact_person"`
+	ContactMobile *string           `json:"contact_mobile"`
+	ContactEmail  *string           `json:"contact_email"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+	DisasterID    int32             `json:"disaster_id"`
 }
 
 type Disaster struct {

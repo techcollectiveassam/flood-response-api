@@ -1,0 +1,34 @@
+meta {
+  name: Create command center - unknown disaster id
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/command-centers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": 999999,
+    "name": "Orphan Response",
+    "type": "ngo"
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq disaster_not_found
+}
+
+tests {
+  test("unknown disaster id returns a 404", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'disaster_not_found');
+    expect(err).to.have.property('message');
+  });
+}

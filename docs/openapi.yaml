@@ -20,6 +20,8 @@ tags:
     description: Platform level endpoints
   - name: disasters
     description: Disaster lifecycle management
+  - name: command-centers
+    description: Command centers operating during a disaster response
   - name: affected-areas
     description: Affected area reports and matching
   - name: sos
@@ -103,6 +105,70 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/command-centers:
+    post:
+      tags: [command-centers]
+      operationId: createCommandCenter
+      summary: Create a command center
+      description: |
+        Registers a command center for a disaster. A disaster can have at most
+        one command center, so registering a second one for the same disaster
+        is rejected with `duplicate_record`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommandCenterRequest"
+            example:
+              disaster_id: 1
+              name: Brahmaputra Basin Control Room
+              type: government
+              description: District flood control room
+              contact_person: Rakesh
+              contact_mobile: "0000000000"
+              contact_email: control@example.org
+      responses:
+        "201":
+          description: Command center created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandCenterData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/DisasterNotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/disasters/{id}/command-center:
+    get:
+      tags: [command-centers]
+      operationId: getCommandCenterByDisaster
+      summary: Get the command center for a disaster
+      description: |
+        Returns the command center belonging to a disaster. The disaster is
+        validated before its command center is read, so the 404 code tells the
+        two failure cases apart: `disaster_not_found` when the id matches no
+        disaster, and `command_center_not_found` when the disaster exists but
+        has no command center.
+      parameters:
+        - $ref: "#/components/parameters/DisasterId"
+      responses:
+        "200":
+          description: Command center retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandCenterData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/CommandCenterLookupNotFound"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/v1/affected-areas:
@@ -295,6 +361,48 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: The request conflicts with an existing record
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: duplicate_record
+              message: a record with the same key already exists
+    DisasterNotFound:
+      description: |
+        No disaster exists for the supplied `disaster_id`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: disaster_not_found
+              message: disaster not found
+    CommandCenterLookupNotFound:
+      description: |
+        The nested lookup could not be resolved. The disaster is validated before
+        its command center is read, so the error code distinguishes the cases.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            unknownDisaster:
+              summary: The id matches no disaster
+              value:
+                error:
+                  code: disaster_not_found
+                  message: disaster not found
+            noCommandCenter:
+              summary: The disaster exists but has no command center
+              value:
+                error:
+                  code: command_center_not_found
+                  message: command center not found
   schemas:
     HealthStatus:
       type: object
@@ -379,6 +487,65 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Disaster"
+    CommandCenterType:
+      type: string
+      enum: [government, ngo, group, other]
+    CommandCenter:
+      type: object
+      required: [id, disaster_id, name, type]
+      properties:
+        id:
+          type: integer
+          format: int32
+        disaster_id:
+          type: integer
+          format: int32
+          description: Disaster the command center operates for
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/CommandCenterType"
+        description:
+          type: string
+          description: Omitted from the response when empty
+        contact_person:
+          type: string
+          description: Omitted from the response when empty
+        contact_mobile:
+          type: string
+          description: Omitted from the response when empty
+        contact_email:
+          type: string
+          description: Omitted from the response when empty
+    CreateCommandCenterRequest:
+      type: object
+      required: [disaster_id, name, type]
+      properties:
+        disaster_id:
+          type: integer
+          format: int32
+        name:
+          type: string
+          maxLength: 255
+        type:
+          $ref: "#/components/schemas/CommandCenterType"
+        description:
+          type: string
+        contact_person:
+          type: string
+          maxLength: 255
+        contact_mobile:
+          type: string
+          maxLength: 20
+        contact_email:
+          type: string
+          maxLength: 255
+    CommandCenterData:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/CommandCenter"
     LocationPayload:
       type: object
       required: [source]

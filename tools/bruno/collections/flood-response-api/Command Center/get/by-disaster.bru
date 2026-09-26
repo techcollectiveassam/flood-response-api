@@ -1,0 +1,39 @@
+meta {
+  name: Get the command center of a disaster
+  type: http
+  seq: 1
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId") || 1;
+  if (!bru.getEnvVar("commandCenterDisasterId")) {
+    bru.setEnvVar("commandCenterDisasterId", disasterId);
+  }
+}
+
+get {
+  url: {{baseUrl}}/api/v1/disasters/{{commandCenterDisasterId}}/command-center
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("returns the command center of the disaster", function() {
+    const data = res.getBody().data;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('disaster_id');
+    expect(data).to.have.property('name');
+    expect(data).to.have.property('type');
+  });
+
+  test("belongs to the requested disaster", function() {
+    const data = res.getBody().data;
+    expect(String(data.disaster_id)).to.equal(String(bru.getEnvVar("commandCenterDisasterId")));
+  });
+}

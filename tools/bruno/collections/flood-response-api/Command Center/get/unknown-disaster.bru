@@ -1,0 +1,26 @@
+meta {
+  name: Get a command center - unknown disaster
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/disasters/999999/command-center
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq disaster_not_found
+}
+
+tests {
+  test("an unknown disaster is reported as a missing disaster", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'disaster_not_found');
+    expect(err).to.have.property('message', 'disaster not found');
+  });
+}

@@ -1,0 +1,41 @@
+meta {
+  name: Create command center - duplicate disaster
+  type: http
+  seq: 11
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId") || 1;
+  if (!bru.getEnvVar("commandCenterDisasterId")) {
+    bru.setEnvVar("commandCenterDisasterId", disasterId);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/command-centers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{commandCenterDisasterId}},
+    "name": "Second Response Unit",
+    "type": "other"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq duplicate_record
+}
+
+tests {
+  test("one-to-one mapping rejects a second command center for a disaster", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'duplicate_record');
+    expect(err).to.have.property('message');
+  });
+}
