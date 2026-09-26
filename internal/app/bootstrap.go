@@ -2,15 +2,17 @@ package app
 
 import (
 	"github.com/techcollectiveassam/flood-response-api/internal/app/affectedarea"
+	"github.com/techcollectiveassam/flood-response-api/internal/app/commandcenter"
 	"github.com/techcollectiveassam/flood-response-api/internal/app/disaster"
 	"github.com/techcollectiveassam/flood-response-api/internal/app/sos"
 )
 
 // Features holds the entry points for the application's feature modules.
 type Features struct {
-	AffectedArea *affectedarea.Module
-	Disaster     *disaster.Module
-	SOS          *sos.Module
+	AffectedArea  *affectedarea.Module
+	Disaster      *disaster.Module
+	SOS           *sos.Module
+	CommandCenter *commandcenter.Module
 }
 
 func NewFeatures(application *Application) *Features {
@@ -25,6 +27,9 @@ func NewFeatures(application *Application) *Features {
 		SOS: sos.New(
 			application.DB,
 			application.Config,
+		),
+		CommandCenter: commandcenter.New(
+			application.DB,
 		),
 	}
 }

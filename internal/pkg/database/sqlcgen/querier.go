@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	CreateAffectedArea(ctx context.Context, arg CreateAffectedAreaParams) (CreateAffectedAreaRow, error)
 	CreateAffectedAreaReport(ctx context.Context, arg CreateAffectedAreaReportParams) (AffectedAreaReport, error)
+	CreateCommandCenter(ctx context.Context, arg CreateCommandCenterParams) (CommandCenter, error)
 	CreateDisaster(ctx context.Context, arg CreateDisasterParams) (CreateDisasterRow, error)
 	CreateSOSRequest(ctx context.Context, arg CreateSOSRequestParams) (CreateSOSRequestRow, error)
 	FindSOSNearby(ctx context.Context, arg FindSOSNearbyParams) (FindSOSNearbyRow, error)

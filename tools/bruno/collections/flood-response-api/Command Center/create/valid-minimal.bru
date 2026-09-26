@@ -1,0 +1,33 @@
+meta {
+  name: Create command center - valid minimal
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/command-centers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Volunteer Response Group",
+    "type": "group"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("minimal request creates a command center", function() {
+    const data = res.getBody().data;
+    expect(data).to.have.property('id');
+    expect(data).to.have.property('name', 'Volunteer Response Group');
+    expect(data).to.have.property('type', 'group');
+  });
+}

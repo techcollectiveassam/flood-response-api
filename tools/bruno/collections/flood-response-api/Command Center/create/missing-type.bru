@@ -1,0 +1,33 @@
+meta {
+  name: Create command center - missing type
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/command-centers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Assam Flood Response Cell"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("missing type is reported as validation error", function() {
+    const err = res.getBody().error;
+    const typeField = err.details.find(d => d.field === 'type');
+    expect(typeField).to.be.an('object');
+    expect(typeField.message).to.equal('type is required');
+  });
+}

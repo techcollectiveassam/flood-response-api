@@ -1,0 +1,31 @@
+meta {
+  name: Create command center - malformed json
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/command-centers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "broken
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("malformed json returns a 400 error", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'invalid_request_body');
+    expect(err).to.have.property('message');
+  });
+}

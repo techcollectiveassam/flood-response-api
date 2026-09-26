@@ -1,0 +1,34 @@
+meta {
+  name: Create command center - empty name
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/command-centers
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "",
+    "type": "ngo"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("empty name is reported as validation error", function() {
+    const err = res.getBody().error;
+    const name = err.details.find(d => d.field === 'name');
+    expect(name).to.be.an('object');
+    expect(name.message).to.equal('name is required');
+  });
+}

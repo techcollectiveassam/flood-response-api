@@ -1,0 +1,31 @@
+meta {
+  name: Create command center - empty body
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/command-centers
+  body: json
+  auth: none
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_request_body
+}
+
+tests {
+  test("empty body fails on required fields", function() {
+    const err = res.getBody().error;
+    const fields = err.details.map(d => d.field);
+    expect(fields).to.include('name');
+    expect(fields).to.include('type');
+  });
+}
