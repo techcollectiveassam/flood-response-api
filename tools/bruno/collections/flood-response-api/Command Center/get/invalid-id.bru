@@ -1,0 +1,26 @@
+meta {
+  name: Get a command center - invalid id
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/disasters/abc/command-center
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_id
+}
+
+tests {
+  test("non-numeric id is rejected", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'invalid_id');
+    expect(err).to.have.property('message', 'disaster id must be a number');
+  });
+}

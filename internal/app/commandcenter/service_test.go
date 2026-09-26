@@ -2,9 +2,11 @@ package commandcenter
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 )
 
 func TestCreateCommandCenter(t *testing.T) {
@@ -80,4 +82,107 @@ func TestCreateCommandCenter(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetCommandCenterByDisaster(t *testing.T) {
+	found := &CommandCenter{
+		ID:            7,
+		DisasterID:    2,
+		Name:          "Volunteer Response Group",
+		Type:          TypeGroup,
+		ContactPerson: "Ravi Das",
+		CreatedAt:     mockCreatedAt,
+		UpdatedAt:     mockCreatedAt,
+	}
+
+	tests := []struct {
+		name         string
+		disasterID   int32
+		repo         *mockRepository
+		wantErr      bool
+		checkErr     error
+		wantExists   int
+		wantGetCalls int
+	}{
+		{
+			name:         "success",
+			disasterID:   2,
+			repo:         &mockRepository{get: found, disasterExists: true},
+			wantErr:      false,
+			wantExists:   1,
+			wantGetCalls: 1,
+		},
+		{
+			name:         "disaster exists but has no command center",
+			disasterID:   4242,
+			repo:         &mockRepository{getErr: ErrCommandCenterNotFound, disasterExists: true},
+			wantErr:      true,
+			checkErr:     ErrCommandCenterNotFound,
+			wantExists:   1,
+			wantGetCalls: 1,
+		},
+		{
+			name:         "unknown disaster",
+			disasterID:   999999,
+			repo:         &mockRepository{disasterExists: false},
+			wantErr:      true,
+			checkErr:     ErrDisasterNotFound,
+			wantExists:   1,
+			wantGetCalls: 0,
+		},
+		{
+			name:         "existence check fails",
+			disasterID:   5555,
+			repo:         &mockRepository{disasterExistsErr: assert.AnError},
+			wantErr:      true,
+			checkErr:     assert.AnError,
+			wantExists:   1,
+			wantGetCalls: 0,
+		},
+		{
+			name:         "repository error",
+			disasterID:   3,
+			repo:         &mockRepository{getErr: assert.AnError, disasterExists: true},
+			wantErr:      true,
+			checkErr:     assert.AnError,
+			wantExists:   1,
+			wantGetCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := NewService(tt.repo)
+
+			resp, err := svc.GetCommandCenterByDisaster(context.Background(), tt.disasterID)
+
+			assert.Equal(t, tt.disasterID, tt.repo.gotDisaster)
+			assert.Equal(t, tt.wantExists, tt.repo.existsCalls)
+			assert.Equal(t, tt.wantGetCalls, tt.repo.getCalls)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				assert.Nil(t, resp)
+				if tt.checkErr != nil {
+					assert.ErrorIs(t, err, tt.checkErr)
+				}
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, found.ID, resp.ID)
+				assert.Equal(t, found.DisasterID, resp.DisasterID)
+				assert.Equal(t, found.Name, resp.Name)
+				assert.Equal(t, found.Type, resp.Type)
+			}
+		})
+	}
+}
+
+func TestErrCommandCenterNotFoundIs404(t *testing.T) {
+	assert.Equal(t, http.StatusNotFound, apperror.HTTPStatus(ErrCommandCenterNotFound))
+	assert.Equal(t, "command_center_not_found", apperror.Code(ErrCommandCenterNotFound))
+}
+
+func TestErrDisasterNotFoundIs404(t *testing.T) {
+	assert.Equal(t, http.StatusNotFound, apperror.HTTPStatus(ErrDisasterNotFound))
+	assert.Equal(t, "disaster_not_found", apperror.Code(ErrDisasterNotFound))
 }

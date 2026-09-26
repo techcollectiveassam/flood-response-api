@@ -54,4 +54,5 @@ func TestRouterRegistersAPIRoutes(t *testing.T) {
 	assert.True(t, routes["POST /api/v1/disasters"])
 	assert.True(t, routes["GET /api/v1/disasters"])
 	assert.True(t, routes["GET /api/v1/disasters/:id"])
+	assert.True(t, routes["GET /api/v1/disasters/:id/command-center"])
 }

@@ -80,3 +80,53 @@ func (q *Queries) CreateCommandCenter(ctx context.Context, arg CreateCommandCent
 	)
 	return i, err
 }
+
+const disasterExists = `-- name: DisasterExists :one
+SELECT EXISTS (SELECT 1 FROM disasters WHERE id = $1)
+`
+
+// Guards the parent resource of the nested lookup so a missing command center
+// can be reported as an unknown disaster rather than a missing command center.
+func (q *Queries) DisasterExists(ctx context.Context, id int32) (bool, error) {
+	row := q.db.QueryRow(ctx, disasterExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const getCommandCenterByDisaster = `-- name: GetCommandCenterByDisaster :one
+SELECT id, disaster_id, name, type, description, contact_person, contact_mobile, contact_email, created_at, updated_at
+FROM command_centers
+WHERE disaster_id = $1
+`
+
+type GetCommandCenterByDisasterRow struct {
+	ID            int32             `json:"id"`
+	DisasterID    int32             `json:"disaster_id"`
+	Name          string            `json:"name"`
+	Type          CommandCenterType `json:"type"`
+	Description   *string           `json:"description"`
+	ContactPerson *string           `json:"contact_person"`
+	ContactMobile *string           `json:"contact_mobile"`
+	ContactEmail  *string           `json:"contact_email"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+}
+
+func (q *Queries) GetCommandCenterByDisaster(ctx context.Context, disasterID int32) (GetCommandCenterByDisasterRow, error) {
+	row := q.db.QueryRow(ctx, getCommandCenterByDisaster, disasterID)
+	var i GetCommandCenterByDisasterRow
+	err := row.Scan(
+		&i.ID,
+		&i.DisasterID,
+		&i.Name,
+		&i.Type,
+		&i.Description,
+		&i.ContactPerson,
+		&i.ContactMobile,
+		&i.ContactEmail,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

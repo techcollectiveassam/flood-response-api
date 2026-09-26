@@ -14,9 +14,13 @@ type Querier interface {
 	CreateCommandCenter(ctx context.Context, arg CreateCommandCenterParams) (CreateCommandCenterRow, error)
 	CreateDisaster(ctx context.Context, arg CreateDisasterParams) (CreateDisasterRow, error)
 	CreateSOSRequest(ctx context.Context, arg CreateSOSRequestParams) (CreateSOSRequestRow, error)
+	// Guards the parent resource of the nested lookup so a missing command center
+	// can be reported as an unknown disaster rather than a missing command center.
+	DisasterExists(ctx context.Context, id int32) (bool, error)
 	FindSOSNearby(ctx context.Context, arg FindSOSNearbyParams) (FindSOSNearbyRow, error)
 	GetAffectedArea(ctx context.Context, id int64) (GetAffectedAreaRow, error)
 	GetAffectedAreaReportByID(ctx context.Context, id int64) (AffectedAreaReport, error)
+	GetCommandCenterByDisaster(ctx context.Context, disasterID int32) (GetCommandCenterByDisasterRow, error)
 	GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error)
 	IncrementReportCount(ctx context.Context, id int64) (int32, error)
 	IncrementSOSReportCount(ctx context.Context, id int64) (IncrementSOSReportCountRow, error)
