@@ -5,9 +5,9 @@ meta {
 }
 
 script:pre-request {
-  const commandCenterDisasterId = bru.getEnvVar("commandCenterDisasterId");
-  if (!commandCenterDisasterId) {
-    bru.setEnvVar("commandCenterDisasterId", 1);
+  const disasterId = bru.getEnvVar("disasterId") || 1;
+  if (!bru.getEnvVar("commandCenterDisasterId")) {
+    bru.setEnvVar("commandCenterDisasterId", disasterId);
   }
 }
 
