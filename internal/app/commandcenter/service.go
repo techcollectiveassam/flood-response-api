@@ -25,6 +25,7 @@ func (s *Service) CreateCommandCenter(ctx context.Context, req CreateCommandCent
 	)
 
 	commandCenter := &CommandCenter{
+		DisasterID:    req.DisasterID,
 		Name:          req.Name,
 		Type:          req.Type,
 		Description:   req.Description,

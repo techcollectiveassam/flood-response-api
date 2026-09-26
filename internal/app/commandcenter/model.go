@@ -10,6 +10,7 @@ const (
 )
 
 type CommandCenter struct {
+	DisasterID    int32
 	ID            int32
 	Name          string
 	Type          string

@@ -1,7 +1,14 @@
 meta {
   name: Create command center - valid
   type: http
-  seq: 1
+  seq: 2
+}
+
+script:pre-request {
+  const commandCenterDisasterId = bru.getEnvVar("commandCenterDisasterId");
+  if (!commandCenterDisasterId) {
+    bru.setEnvVar("commandCenterDisasterId", 1);
+  }
 }
 
 post {
@@ -12,6 +19,7 @@ post {
 
 body:json {
   {
+    "disaster_id": {{commandCenterDisasterId}},
     "name": "Assam State Disaster Management",
     "type": "government",
     "description": "State level coordination of flood response",
@@ -31,6 +39,7 @@ tests {
   test("create returns the created command center", function() {
     const data = res.getBody().data;
     expect(data).to.have.property('id');
+    expect(data).to.have.property('disaster_id');
     expect(data).to.have.property('name', 'Assam State Disaster Management');
     expect(data).to.have.property('type', 'government');
     expect(data).to.have.property('description', 'State level coordination of flood response');

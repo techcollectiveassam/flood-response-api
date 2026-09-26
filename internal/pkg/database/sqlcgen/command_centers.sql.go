@@ -7,10 +7,12 @@ package sqlcgen
 
 import (
 	"context"
+	"time"
 )
 
 const createCommandCenter = `-- name: CreateCommandCenter :one
 INSERT INTO command_centers (
+    disaster_id,
     name,
     type,
     description,
@@ -24,12 +26,14 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    $7
 )
-RETURNING id, name, type, description, contact_person, contact_mobile, contact_email, created_at, updated_at
+RETURNING id, disaster_id, name, type, description, contact_person, contact_mobile, contact_email, created_at, updated_at
 `
 
 type CreateCommandCenterParams struct {
+	DisasterID    int32             `json:"disaster_id"`
 	Name          string            `json:"name"`
 	Type          CommandCenterType `json:"type"`
 	Description   *string           `json:"description"`
@@ -38,8 +42,22 @@ type CreateCommandCenterParams struct {
 	ContactEmail  *string           `json:"contact_email"`
 }
 
-func (q *Queries) CreateCommandCenter(ctx context.Context, arg CreateCommandCenterParams) (CommandCenter, error) {
+type CreateCommandCenterRow struct {
+	ID            int32             `json:"id"`
+	DisasterID    int32             `json:"disaster_id"`
+	Name          string            `json:"name"`
+	Type          CommandCenterType `json:"type"`
+	Description   *string           `json:"description"`
+	ContactPerson *string           `json:"contact_person"`
+	ContactMobile *string           `json:"contact_mobile"`
+	ContactEmail  *string           `json:"contact_email"`
+	CreatedAt     time.Time         `json:"created_at"`
+	UpdatedAt     time.Time         `json:"updated_at"`
+}
+
+func (q *Queries) CreateCommandCenter(ctx context.Context, arg CreateCommandCenterParams) (CreateCommandCenterRow, error) {
 	row := q.db.QueryRow(ctx, createCommandCenter,
+		arg.DisasterID,
 		arg.Name,
 		arg.Type,
 		arg.Description,
@@ -47,9 +65,10 @@ func (q *Queries) CreateCommandCenter(ctx context.Context, arg CreateCommandCent
 		arg.ContactMobile,
 		arg.ContactEmail,
 	)
-	var i CommandCenter
+	var i CreateCommandCenterRow
 	err := row.Scan(
 		&i.ID,
+		&i.DisasterID,
 		&i.Name,
 		&i.Type,
 		&i.Description,

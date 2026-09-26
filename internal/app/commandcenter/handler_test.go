@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 )
 
 func setupRouter(handler *Handler) *gin.Engine {
@@ -21,6 +22,7 @@ func setupRouter(handler *Handler) *gin.Engine {
 func TestToCommandCenterResponse(t *testing.T) {
 	c := &CommandCenter{
 		ID:            1,
+		DisasterID:    2,
 		Name:          "Assam State Disaster Management",
 		Type:          TypeGovernment,
 		Description:   "State level coordination",
@@ -32,6 +34,7 @@ func TestToCommandCenterResponse(t *testing.T) {
 	resp := toCommandCenterResponse(c)
 
 	assert.Equal(t, c.ID, resp.ID)
+	assert.Equal(t, c.DisasterID, resp.DisasterID)
 	assert.Equal(t, c.Name, resp.Name)
 	assert.Equal(t, c.Type, resp.Type)
 	assert.Equal(t, c.Description, resp.Description)
@@ -52,8 +55,9 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 		{
 			name: "success",
 			body: CreateCommandCenterRequest{
-				Name: "Assam State Disaster Management",
-				Type: TypeGovernment,
+				DisasterID: 1,
+				Name:       "Assam State Disaster Management",
+				Type:       TypeGovernment,
 			},
 			repoErr:    nil,
 			wantStatus: http.StatusCreated,
@@ -80,8 +84,9 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 		{
 			name: "invalid type",
 			body: CreateCommandCenterRequest{
-				Name: "Unknown",
-				Type: "corporation",
+				DisasterID: 1,
+				Name:       "Unknown",
+				Type:       "corporation",
 			},
 			repoErr:    nil,
 			wantStatus: http.StatusBadRequest,
@@ -89,10 +94,23 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 			wantErr:    true,
 		},
 		{
+			name: "unknown disaster",
+			body: CreateCommandCenterRequest{
+				DisasterID: 999999,
+				Name:       "Orphan Response",
+				Type:       TypeNGO,
+			},
+			repoErr:    apperror.NotFound("disaster_not_found", "disaster not found"),
+			wantStatus: http.StatusNotFound,
+			wantCode:   "disaster_not_found",
+			wantErr:    true,
+		},
+		{
 			name: "service error",
 			body: CreateCommandCenterRequest{
-				Name: "Earthquake Response",
-				Type: TypeNGO,
+				DisasterID: 1,
+				Name:       "Earthquake Response",
+				Type:       TypeNGO,
 			},
 			repoErr:    assert.AnError,
 			wantStatus: http.StatusInternalServerError,
@@ -147,6 +165,7 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, float64(1), resp.Data["id"])
+				assert.Equal(t, float64(1), resp.Data["disaster_id"])
 				assert.Equal(t, "Assam State Disaster Management", resp.Data["name"])
 				assert.Equal(t, "government", resp.Data["type"])
 			}

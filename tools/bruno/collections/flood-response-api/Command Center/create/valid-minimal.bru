@@ -1,7 +1,14 @@
 meta {
   name: Create command center - valid minimal
   type: http
-  seq: 2
+  seq: 3
+}
+
+script:pre-request {
+  const disasterId = bru.getEnvVar("disasterId");
+  if (!disasterId) {
+    bru.setEnvVar("disasterId", 1);
+  }
 }
 
 post {
@@ -12,6 +19,7 @@ post {
 
 body:json {
   {
+    "disaster_id": {{disasterId}},
     "name": "Volunteer Response Group",
     "type": "group"
   }
@@ -27,6 +35,7 @@ tests {
   test("minimal request creates a command center", function() {
     const data = res.getBody().data;
     expect(data).to.have.property('id');
+    expect(data).to.have.property('disaster_id');
     expect(data).to.have.property('name', 'Volunteer Response Group');
     expect(data).to.have.property('type', 'group');
   });

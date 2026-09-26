@@ -1,7 +1,7 @@
 meta {
-  name: Create command center - empty name
+  name: Create command center - duplicate disaster
   type: http
-  seq: 7
+  seq: 11
 }
 
 script:pre-request {
@@ -20,23 +20,22 @@ post {
 body:json {
   {
     "disaster_id": {{commandCenterDisasterId}},
-    "name": "",
-    "type": "ngo"
+    "name": "Second Response Unit",
+    "type": "other"
   }
 }
 
 assert {
-  res.status: eq 400
+  res.status: eq 409
   res.body: isJson
   res.body.error: isJson
-  res.body.error.code: eq invalid_request_body
+  res.body.error.code: eq duplicate_record
 }
 
 tests {
-  test("empty name is reported as validation error", function() {
+  test("one-to-one mapping rejects a second command center for a disaster", function() {
     const err = res.getBody().error;
-    const name = err.details.find(d => d.field === 'name');
-    expect(name).to.be.an('object');
-    expect(name.message).to.equal('name is required');
+    expect(err).to.have.property('code', 'duplicate_record');
+    expect(err).to.have.property('message');
   });
 }

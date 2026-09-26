@@ -1,7 +1,14 @@
 meta {
   name: Create command center - missing type
   type: http
-  seq: 4
+  seq: 5
+}
+
+script:pre-request {
+  const commandCenterDisasterId = bru.getEnvVar("commandCenterDisasterId");
+  if (!commandCenterDisasterId) {
+    bru.setEnvVar("commandCenterDisasterId", 1);
+  }
 }
 
 post {
@@ -12,6 +19,7 @@ post {
 
 body:json {
   {
+    "disaster_id": {{commandCenterDisasterId}},
     "name": "Assam Flood Response Cell"
   }
 }

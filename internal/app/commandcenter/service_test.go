@@ -18,6 +18,7 @@ func TestCreateCommandCenter(t *testing.T) {
 		{
 			name: "success",
 			req: CreateCommandCenterRequest{
+				DisasterID:    1,
 				Name:          "Assam State Disaster Management",
 				Type:          TypeGovernment,
 				Description:   "State level coordination",
@@ -31,8 +32,9 @@ func TestCreateCommandCenter(t *testing.T) {
 		{
 			name: "success with only required fields",
 			req: CreateCommandCenterRequest{
-				Name: "Volunteer Response Group",
-				Type: TypeGroup,
+				DisasterID: 2,
+				Name:       "Volunteer Response Group",
+				Type:       TypeGroup,
 			},
 			repoErr: nil,
 			wantErr: false,
@@ -40,8 +42,9 @@ func TestCreateCommandCenter(t *testing.T) {
 		{
 			name: "repository error",
 			req: CreateCommandCenterRequest{
-				Name: "Earthquake Response",
-				Type: TypeNGO,
+				DisasterID: 3,
+				Name:       "Earthquake Response",
+				Type:       TypeNGO,
 			},
 			repoErr:  assert.AnError,
 			wantErr:  true,
@@ -65,6 +68,7 @@ func TestCreateCommandCenter(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, int32(1), resp.ID)
+				assert.Equal(t, tt.req.DisasterID, resp.DisasterID)
 				assert.Equal(t, tt.req.Name, resp.Name)
 				assert.Equal(t, tt.req.Type, resp.Type)
 				assert.Equal(t, tt.req.Description, resp.Description)

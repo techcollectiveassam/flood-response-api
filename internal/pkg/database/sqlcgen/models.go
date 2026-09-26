@@ -314,6 +314,7 @@ type CommandCenter struct {
 	ContactEmail  *string           `json:"contact_email"`
 	CreatedAt     time.Time         `json:"created_at"`
 	UpdatedAt     time.Time         `json:"updated_at"`
+	DisasterID    int32             `json:"disaster_id"`
 }
 
 type Disaster struct {

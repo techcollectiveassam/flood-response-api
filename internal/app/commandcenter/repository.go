@@ -24,6 +24,7 @@ func NewRepository(pool *pgxpool.Pool) *PostgresRepository {
 
 func (r *PostgresRepository) Create(ctx context.Context, commandCenter *CommandCenter) error {
 	result, err := r.queries.CreateCommandCenter(ctx, sqlcgen.CreateCommandCenterParams{
+		DisasterID:    commandCenter.DisasterID,
 		Name:          commandCenter.Name,
 		Type:          sqlcgen.CommandCenterType(commandCenter.Type),
 		Description:   database.NullableString(commandCenter.Description),
@@ -35,6 +36,7 @@ func (r *PostgresRepository) Create(ctx context.Context, commandCenter *CommandC
 		return database.TranslateError(err)
 	}
 	commandCenter.ID = result.ID
+	commandCenter.DisasterID = result.DisasterID
 	commandCenter.Name = result.Name
 	commandCenter.Type = string(result.Type)
 	commandCenter.Description = database.TextValue(result.Description)
