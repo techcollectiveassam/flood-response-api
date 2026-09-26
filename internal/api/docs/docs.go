@@ -1,5 +1,5 @@
 // Package docs serves the Redoc API reference generated from
-// docs/openapi.yaml (repo root) via `make docs:build`. The generated page and
+// docs/openapi.yaml (repo root) via `make docs-build`. The generated page and
 // the pinned redoc.standalone.js bundle are embedded so the docs work offline
 // and from within the compiled binary.
 package docs
@@ -21,7 +21,7 @@ const (
 )
 
 // Register mounts GET /docs (the rendered API reference) and its vendored
-// Redoc bundle. Run `make docs:build` after editing docs/openapi.yaml to keep
+// Redoc bundle. Run `make docs-build` after editing docs/openapi.yaml to keep
 // the embedded page in sync with the spec.
 func Register(r *gin.Engine) {
 	index := mustRead("static/index.html")
