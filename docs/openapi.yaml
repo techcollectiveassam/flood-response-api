@@ -45,6 +45,10 @@ paths:
       tags: [disasters]
       operationId: createDisaster
       summary: Create a disaster entry
+      description: |
+        Creates a disaster entry. Both timestamps are optional: `starts_at`
+        defaults to the current time when omitted, while `ends_at` does not
+        and stays `null`.
       requestBody:
         required: true
         content:
@@ -318,11 +322,16 @@ components:
         starts_at:
           type: [string, "null"]
           format: date-time
-          description: UTC RFC3339 timestamp (always ends in Z)
+          description: |
+            UTC RFC3339 timestamp (always ends in Z). Populated on creation
+            even when the request omits it, because the API defaults it to the
+            current time. May be `null` only for rows created outside this API.
         ends_at:
           type: [string, "null"]
           format: date-time
-          description: UTC RFC3339 timestamp (always ends in Z)
+          description: |
+            UTC RFC3339 timestamp (always ends in Z). Not defaulted, so `null`
+            when the request omitted it.
     CreateDisasterRequest:
       type: object
       required: [name, type]
@@ -337,9 +346,19 @@ components:
         starts_at:
           type: [string, "null"]
           format: date-time
+          description: |
+            Optional. If it is omitted or sent as `null`, the API defaults it
+            to the current time (`CURRENT_TIMESTAMP` on the database server)
+            and returns the generated value in the response. A value sent by
+            the client is normalized to UTC and returned as RFC3339.
         ends_at:
           type: [string, "null"]
           format: date-time
+          description: |
+            Optional and **not** defaulted. If it is omitted or sent as `null`
+            it is stored as `null` and the `ends_at` key is left out of the
+            response entirely. A value sent by the client is normalized to UTC
+            and returned as RFC3339.
     DisasterType:
       type: string
       enum: [flood, earthquake, landslide]
