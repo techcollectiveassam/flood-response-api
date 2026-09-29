@@ -1,11 +1,12 @@
 meta {
-  name: Get a command center - invalid id
+  name: Get an affected area - invalid id
   type: http
   seq: 5
+
 }
 
 get {
-  url: {{baseUrl}}/api/v1/disasters/abc/command-center
+  url: {{baseUrl}}/api/v1/affected-areas/abc
   body: none
   auth: none
 }
@@ -21,6 +22,6 @@ tests {
   test("non-numeric id is rejected", function() {
     const err = res.getBody().error;
     expect(err).to.have.property('code', 'invalid_id');
-    expect(err).to.have.property('message', 'disaster id must be a number');
+    expect(err).to.have.property('message', 'affected area id must be a number');
   });
 }

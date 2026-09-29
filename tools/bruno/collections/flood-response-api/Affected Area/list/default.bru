@@ -1,0 +1,54 @@
+meta {
+  name: List affected areas - default pagination
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+  res.body.data: isJson
+  res.body.pagination: isJson
+}
+
+tests {
+  test("data is an array of affected areas", function() {
+    const data = res.getBody().data;
+    expect(data).to.be.an('array');
+    data.forEach(function(area) {
+      expect(area).to.have.property('id');
+      expect(area).to.have.property('name');
+      expect(area).to.have.property('disaster_id');
+      expect(area).to.have.property('severity');
+      expect(area).to.have.property('verification_status');
+      expect(area).to.have.property('report_count');
+    });
+  });
+
+  test("omitting the query params falls back to the server defaults", function() {
+    const pagination = res.getBody().pagination;
+    expect(pagination.page).to.equal(1);
+    expect(pagination.limit).to.be.a('number');
+    expect(pagination.limit).to.be.above(0);
+    expect(pagination).to.have.property('total');
+    expect(pagination).to.have.property('total_pages');
+  });
+
+  test("never returns more items than the limit", function() {
+    const body = res.getBody();
+    expect(body.data.length).to.be.at.most(body.pagination.limit);
+  });
+
+  test("captures the first affected area id", function() {
+    const data = res.getBody().data;
+    if (data.length > 0) {
+      bru.setEnvVar("affectedAreaId", data[0].id);
+    }
+  });
+}

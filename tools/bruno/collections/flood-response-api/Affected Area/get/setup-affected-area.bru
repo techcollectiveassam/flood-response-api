@@ -1,0 +1,46 @@
+meta {
+  name: Setup affected area for get requests
+  type: http
+  seq: 2
+}
+
+script:pre-request {
+  if (!bru.getEnvVar("disasterId")) {
+    bru.setEnvVar("disasterId", 1);
+  }
+}
+
+post {
+  url: {{baseUrl}}/api/v1/affected-areas
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "disaster_id": {{disasterId}},
+    "name": "Guwahati riverine settlement",
+    "description": "Low lying settlement along the Brahmaputra",
+    "location": {
+      "source": "gps",
+      "name": "Guwahati riverine settlement",
+      "latitude": 26.14,
+      "longitude": 91.73
+    },
+    "severity": "high"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("captures an affected area for the get requests", function() {
+    const data = res.getBody().data;
+    expect(data.affected_area).to.have.property('id');
+    bru.setEnvVar("affectedAreaId", data.affected_area.id);
+  });
+}
