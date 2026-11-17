@@ -252,10 +252,12 @@ paths:
       operationId: createSOS
       summary: Send an SOS request
       description: |
-        Sends an SOS request. If a nearby request for the same disaster exists
-        within the configured duplicate radius, the existing request is
-        returned with its report count incremented instead of creating a new
-        one.
+        Sends an SOS request. If an active or reported request for the same
+        disaster exists with the same reporter mobile number, it is treated as
+        a duplicate regardless of location. When no mobile number is provided,
+        a nearby request within the configured duplicate radius is treated as
+        a duplicate. The existing request is returned with its report count
+        incremented instead of creating a new one.
       requestBody:
         required: true
         content:

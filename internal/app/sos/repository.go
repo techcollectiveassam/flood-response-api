@@ -14,7 +14,7 @@ import (
 
 type Repository interface {
 	Create(ctx context.Context, sos *SOS) error
-	FindNearby(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error)
+	FindDuplicate(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error)
 	IncrementReportCount(ctx context.Context, id int64) (*SOS, error)
 	ListSOS(ctx context.Context, page, limit int) ([]*SOS, int64, error)
 }
@@ -44,8 +44,8 @@ func (r *PostgresRepository) Create(ctx context.Context, sos *SOS) error {
 	return nil
 }
 
-func (r *PostgresRepository) FindNearby(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error) {
-	result, err := r.queries.FindSOSNearby(ctx, sqlcgen.FindSOSNearbyParams{
+func (r *PostgresRepository) FindDuplicate(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error) {
+	result, err := r.queries.FindSOSDuplicate(ctx, sqlcgen.FindSOSDuplicateParams{
 		DisasterID: disasterID,
 		Column2:    mobile,
 		Column3:    geometry,

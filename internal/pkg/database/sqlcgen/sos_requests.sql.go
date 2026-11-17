@@ -70,7 +70,7 @@ func (q *Queries) CreateSOSRequest(ctx context.Context, arg CreateSOSRequestPara
 	return i, err
 }
 
-const findSOSNearby = `-- name: FindSOSNearby :one
+const findSOSDuplicate = `-- name: FindSOSDuplicate :one
 SELECT id,
        disaster_id,
        COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
@@ -78,25 +78,34 @@ SELECT id,
 FROM sos_requests
 WHERE disaster_id = $1
   AND status IN ('reported', 'active')
-  AND geom IS NOT NULL
-  AND ($2::text = '' OR reporter_mobile = $2)
-  AND ST_DWithin(
-        geom::geography,
-        ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography,
-        $4::double precision
+  AND (
+        ($2::text <> '' AND reporter_mobile = $2)
+        OR (
+            $2::text = ''
+            AND geom IS NOT NULL
+            AND CASE
+                WHEN $3::text <> '' THEN ST_DWithin(
+                    geom::geography,
+                    ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography,
+                    $4::double precision
+                )
+                ELSE FALSE
+            END
+        )
       )
-ORDER BY created_at DESC, id DESC
+ORDER BY CASE WHEN $2::text <> '' AND reporter_mobile = $2 THEN 0 ELSE 1 END,
+         created_at DESC, id DESC
 LIMIT 1
 `
 
-type FindSOSNearbyParams struct {
+type FindSOSDuplicateParams struct {
 	DisasterID int32   `json:"disaster_id"`
 	Column2    string  `json:"column_2"`
 	Column3    string  `json:"column_3"`
 	Column4    float64 `json:"column_4"`
 }
 
-type FindSOSNearbyRow struct {
+type FindSOSDuplicateRow struct {
 	ID             int64       `json:"id"`
 	DisasterID     int32       `json:"disaster_id"`
 	Geometry       interface{} `json:"geometry"`
@@ -108,14 +117,14 @@ type FindSOSNearbyRow struct {
 	UpdatedAt      time.Time   `json:"updated_at"`
 }
 
-func (q *Queries) FindSOSNearby(ctx context.Context, arg FindSOSNearbyParams) (FindSOSNearbyRow, error) {
-	row := q.db.QueryRow(ctx, findSOSNearby,
+func (q *Queries) FindSOSDuplicate(ctx context.Context, arg FindSOSDuplicateParams) (FindSOSDuplicateRow, error) {
+	row := q.db.QueryRow(ctx, findSOSDuplicate,
 		arg.DisasterID,
 		arg.Column2,
 		arg.Column3,
 		arg.Column4,
 	)
-	var i FindSOSNearbyRow
+	var i FindSOSDuplicateRow
 	err := row.Scan(
 		&i.ID,
 		&i.DisasterID,
