@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -188,6 +189,55 @@ func location(latitude, longitude float64) *Location {
 
 func fp(value float64) *float64 {
 	return &value
+}
+
+func TestGetSOSByTrackingID(t *testing.T) {
+	trackingID := uuid.MustParse("3f2a9c1e-7b4d-4e2a-9c1e-5d6f7a8b9c0d")
+	found := &SOS{ID: 9, TrackingID: trackingID, DisasterID: 7, Status: StatusReported, ReportCount: 2}
+
+	tests := []struct {
+		name    string
+		result  *SOS
+		repoErr error
+		wantErr error
+	}{
+		{
+			name:   "returns the sos for a known tracking id",
+			result: found,
+		},
+		{
+			name:    "returns not found when no sos matches",
+			result:  nil,
+			wantErr: ErrSOSNotFound,
+		},
+		{
+			name:    "propagates repository errors",
+			repoErr: assert.AnError,
+			wantErr: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepository{
+				getByTrackingResult: tt.result,
+				getByTrackingErr:    tt.repoErr,
+			}
+			svc := NewService(repo, 100)
+
+			result, err := svc.GetSOSByTrackingID(context.Background(), trackingID)
+
+			assert.Equal(t, 1, repo.getByTrackingCalls)
+			assert.Equal(t, trackingID, repo.getByTrackingID)
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, result)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, found, result)
+		})
+	}
 }
 
 func TestListSOS(t *testing.T) {

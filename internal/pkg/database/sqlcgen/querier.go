@@ -6,6 +6,8 @@ package sqlcgen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
@@ -22,6 +24,7 @@ type Querier interface {
 	GetAffectedAreaReportByID(ctx context.Context, id int64) (AffectedAreaReport, error)
 	GetCommandCenterByDisaster(ctx context.Context, disasterID int32) (GetCommandCenterByDisasterRow, error)
 	GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error)
+	GetSOSRequestByTrackingID(ctx context.Context, trackingID uuid.UUID) (GetSOSRequestByTrackingIDRow, error)
 	IncrementReportCount(ctx context.Context, id int64) (int32, error)
 	IncrementSOSReportCount(ctx context.Context, id int64) (IncrementSOSReportCountRow, error)
 	ListAffectedAreas(ctx context.Context, arg ListAffectedAreasParams) ([]ListAffectedAreasRow, error)

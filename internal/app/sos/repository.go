@@ -18,6 +18,7 @@ type Repository interface {
 	FindDuplicate(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error)
 	IncrementReportCount(ctx context.Context, id int64) (*SOS, error)
 	ListSOS(ctx context.Context, page, limit int) ([]*SOS, int64, error)
+	GetSOSByTrackingID(ctx context.Context, trackingID uuid.UUID) (*SOS, error)
 }
 
 type PostgresRepository struct {
@@ -153,4 +154,16 @@ func (r *PostgresRepository) ListSOS(ctx context.Context, page, limit int) ([]*S
 		sosList[i] = sosFromRow(row.ID, row.TrackingID, row.DisasterID, row.Geometry, row.ReporterMobile, row.Message, row.Status, row.ReportCount, row.CreatedAt, row.UpdatedAt)
 	}
 	return sosList, total, nil
+}
+
+func (r *PostgresRepository) GetSOSByTrackingID(ctx context.Context, trackingID uuid.UUID) (*SOS, error) {
+	result, err := r.queries.GetSOSRequestByTrackingID(ctx, trackingID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, database.TranslateError(err)
+	}
+
+	return sosFromRow(result.ID, result.TrackingID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt), nil
 }

@@ -66,3 +66,12 @@ SELECT id,
 FROM sos_requests
 ORDER BY created_at DESC, id DESC
 LIMIT $1 OFFSET $2;
+
+-- name: GetSOSRequestByTrackingID :one
+SELECT id,
+       tracking_id,
+       disaster_id,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       reporter_mobile, message, status, report_count, created_at, updated_at
+FROM sos_requests
+WHERE tracking_id = $1;

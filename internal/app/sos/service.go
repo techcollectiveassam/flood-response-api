@@ -3,6 +3,7 @@ package sos
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/pagination"
@@ -12,6 +13,7 @@ var (
 	ErrInvalidSOS        = apperror.BadRequest("invalid_sos", "either reporter_mobile or location is required")
 	ErrInvalidLocation   = apperror.BadRequest("invalid_location", "latitude and longitude must be provided together")
 	ErrInvalidCoordinate = apperror.BadRequest("invalid_location", "latitude must be within -90..90 and longitude within -180..180")
+	ErrSOSNotFound       = apperror.NotFound("sos_not_found", "no sos request found for the given tracking id")
 )
 
 type Service struct {
@@ -127,4 +129,21 @@ func (s *Service) ListSOS(ctx context.Context, page, limit int) (*pagination.Res
 
 	logger.Debug("sos listed", "count", len(sosList), "total", total)
 	return &pagination.Result[*SOS]{Items: sosList, Total: total}, nil
+}
+
+func (s *Service) GetSOSByTrackingID(ctx context.Context, trackingID uuid.UUID) (*SOS, error) {
+	logger := logging.FromContext(ctx)
+	sosRequest, err := s.repository.GetSOSByTrackingID(ctx, trackingID)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("get sos by tracking id", "error", err)
+		}
+		return nil, err
+	}
+	if sosRequest == nil {
+		return nil, ErrSOSNotFound
+	}
+
+	logger.Debug("sos retrieved", "id", sosRequest.ID)
+	return sosRequest, nil
 }

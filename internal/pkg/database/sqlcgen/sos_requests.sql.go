@@ -147,6 +147,47 @@ func (q *Queries) FindSOSDuplicate(ctx context.Context, arg FindSOSDuplicatePara
 	return i, err
 }
 
+const getSOSRequestByTrackingID = `-- name: GetSOSRequestByTrackingID :one
+SELECT id,
+       tracking_id,
+       disaster_id,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       reporter_mobile, message, status, report_count, created_at, updated_at
+FROM sos_requests
+WHERE tracking_id = $1
+`
+
+type GetSOSRequestByTrackingIDRow struct {
+	ID             int64       `json:"id"`
+	TrackingID     uuid.UUID   `json:"tracking_id"`
+	DisasterID     int32       `json:"disaster_id"`
+	Geometry       interface{} `json:"geometry"`
+	ReporterMobile *string     `json:"reporter_mobile"`
+	Message        *string     `json:"message"`
+	Status         SosStatus   `json:"status"`
+	ReportCount    int32       `json:"report_count"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) GetSOSRequestByTrackingID(ctx context.Context, trackingID uuid.UUID) (GetSOSRequestByTrackingIDRow, error) {
+	row := q.db.QueryRow(ctx, getSOSRequestByTrackingID, trackingID)
+	var i GetSOSRequestByTrackingIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TrackingID,
+		&i.DisasterID,
+		&i.Geometry,
+		&i.ReporterMobile,
+		&i.Message,
+		&i.Status,
+		&i.ReportCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const incrementSOSReportCount = `-- name: IncrementSOSReportCount :one
 UPDATE sos_requests
 SET report_count = report_count + 1,

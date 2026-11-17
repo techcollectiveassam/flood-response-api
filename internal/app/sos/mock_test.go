@@ -3,6 +3,8 @@ package sos
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type mockRepository struct {
@@ -13,7 +15,11 @@ type mockRepository struct {
 	listResults         []*SOS
 	listTotal           int64
 	listErr             error
+	getByTrackingResult *SOS
+	getByTrackingErr    error
 
+	getByTrackingCalls  int
+	getByTrackingID     uuid.UUID
 	findDuplicateCalled bool
 	findDuplicateMobile string
 	findDuplicateGeom   string
@@ -60,4 +66,13 @@ func (m *mockRepository) ListSOS(ctx context.Context, page, limit int) ([]*SOS, 
 		return nil, 0, m.listErr
 	}
 	return m.listResults, m.listTotal, nil
+}
+
+func (m *mockRepository) GetSOSByTrackingID(ctx context.Context, trackingID uuid.UUID) (*SOS, error) {
+	m.getByTrackingCalls++
+	m.getByTrackingID = trackingID
+	if m.getByTrackingErr != nil {
+		return nil, m.getByTrackingErr
+	}
+	return m.getByTrackingResult, nil
 }
