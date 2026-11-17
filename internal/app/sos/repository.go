@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
@@ -40,7 +41,7 @@ func (r *PostgresRepository) Create(ctx context.Context, sos *SOS) error {
 		return database.TranslateError(err)
 	}
 
-	*sos = *sosFromRow(result.ID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt)
+	*sos = *sosFromRow(result.ID, result.TrackingID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt)
 	return nil
 }
 
@@ -58,7 +59,7 @@ func (r *PostgresRepository) FindDuplicate(ctx context.Context, disasterID int32
 		return nil, database.TranslateError(err)
 	}
 
-	return sosFromRow(result.ID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt), nil
+	return sosFromRow(result.ID, result.TrackingID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt), nil
 }
 
 func (r *PostgresRepository) IncrementReportCount(ctx context.Context, id int64) (*SOS, error) {
@@ -67,12 +68,13 @@ func (r *PostgresRepository) IncrementReportCount(ctx context.Context, id int64)
 		return nil, database.TranslateError(err)
 	}
 
-	return sosFromRow(result.ID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt), nil
+	return sosFromRow(result.ID, result.TrackingID, result.DisasterID, result.Geometry, result.ReporterMobile, result.Message, result.Status, result.ReportCount, result.CreatedAt, result.UpdatedAt), nil
 }
 
-func sosFromRow(id int64, disasterID int32, geometry interface{}, reporterMobile, message *string, status sqlcgen.SosStatus, reportCount int32, createdAt, updatedAt time.Time) *SOS {
+func sosFromRow(id int64, trackingID uuid.UUID, disasterID int32, geometry interface{}, reporterMobile, message *string, status sqlcgen.SosStatus, reportCount int32, createdAt, updatedAt time.Time) *SOS {
 	s := &SOS{
 		ID:             id,
+		TrackingID:     trackingID,
 		DisasterID:     disasterID,
 		ReporterMobile: database.TextValue(reporterMobile),
 		Message:        database.TextValue(message),
@@ -148,7 +150,7 @@ func (r *PostgresRepository) ListSOS(ctx context.Context, page, limit int) ([]*S
 
 	sosList := make([]*SOS, len(result))
 	for i, row := range result {
-		sosList[i] = sosFromRow(row.ID, row.DisasterID, row.Geometry, row.ReporterMobile, row.Message, row.Status, row.ReportCount, row.CreatedAt, row.UpdatedAt)
+		sosList[i] = sosFromRow(row.ID, row.TrackingID, row.DisasterID, row.Geometry, row.ReporterMobile, row.Message, row.Status, row.ReportCount, row.CreatedAt, row.UpdatedAt)
 	}
 	return sosList, total, nil
 }

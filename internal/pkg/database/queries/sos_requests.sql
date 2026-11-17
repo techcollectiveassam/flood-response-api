@@ -12,12 +12,14 @@ VALUES (
     $4
 )
 RETURNING id,
+          tracking_id,
           disaster_id,
           COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
           reporter_mobile, message, status, report_count, created_at, updated_at;
 
 -- name: FindSOSDuplicate :one
 SELECT id,
+       tracking_id,
        disaster_id,
        COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
        reporter_mobile, message, status, report_count, created_at, updated_at
@@ -49,12 +51,14 @@ SET report_count = report_count + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING id,
+          tracking_id,
           disaster_id,
           COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
           reporter_mobile, message, status, report_count, created_at, updated_at;
 
 -- name: ListSOSRequests :many
 SELECT id,
+       tracking_id,
        disaster_id,
        COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
        reporter_mobile, message, status, report_count, created_at, updated_at,

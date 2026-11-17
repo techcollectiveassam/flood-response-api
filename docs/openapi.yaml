@@ -724,14 +724,12 @@ components:
             - type: "null"
     SOS:
       type: object
-      required: [id, disaster_id, status, report_count, created_at]
+      required: [tracking_id, status, report_count, created_at]
       properties:
-        id:
-          type: integer
-          format: int64
-        disaster_id:
-          type: integer
-          format: int32
+        tracking_id:
+          type: string
+          format: uuid
+          description: Public identifier for tracking this SOS request
         location:
           anyOf:
             - $ref: "#/components/schemas/SOSLocation"

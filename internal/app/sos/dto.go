@@ -17,8 +17,7 @@ type Location struct {
 }
 
 type SOSResponse struct {
-	ID             int64     `json:"id"`
-	DisasterID     int32     `json:"disaster_id"`
+	TrackingID     string    `json:"tracking_id"`
 	Location       *Location `json:"location,omitempty"`
 	ReporterMobile string    `json:"reporter_mobile,omitempty"`
 	Message        string    `json:"message,omitempty"`
@@ -29,8 +28,7 @@ type SOSResponse struct {
 
 func toSOSResponse(s *SOS) SOSResponse {
 	resp := SOSResponse{
-		ID:             s.ID,
-		DisasterID:     s.DisasterID,
+		TrackingID:     s.TrackingID.String(),
 		ReporterMobile: s.ReporterMobile,
 		Message:        s.Message,
 		Status:         s.Status,
