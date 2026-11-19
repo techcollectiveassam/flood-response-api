@@ -1,6 +1,10 @@
 package sos
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	StatusReported = "reported"
@@ -8,6 +12,7 @@ const (
 
 type SOS struct {
 	ID             int64
+	TrackingID     uuid.UUID
 	DisasterID     int32
 	Latitude       *float64
 	Longitude      *float64

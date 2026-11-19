@@ -1,0 +1,26 @@
+meta {
+  name: Get SOS by tracking ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/sos/{{sosTrackingId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+  res.body.data: isJson
+}
+
+tests {
+  test("returns the SOS request for the tracking id", function() {
+    const data = res.getBody().data;
+    expect(data).to.have.property('tracking_id', bru.getEnvVar("sosTrackingId"));
+    expect(data).to.have.property('status');
+    expect(data).to.have.property('report_count');
+  });
+}

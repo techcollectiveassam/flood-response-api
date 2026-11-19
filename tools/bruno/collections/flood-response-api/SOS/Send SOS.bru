@@ -10,6 +10,12 @@ post {
   auth: none
 }
 
+script:post-response {
+  if (res.status === 201 || res.status === 200) {
+    bru.setEnvVar("sosTrackingId", res.getBody().data.tracking_id);
+  }
+}
+
 body:json {
   {
     "disaster_id": {{disasterId}},

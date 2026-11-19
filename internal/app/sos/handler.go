@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/pagination"
@@ -82,4 +83,24 @@ func (h *Handler) ListSOS(c *gin.Context) {
 		TotalPages: pagination.TotalPages(result.Total, limit),
 	}
 	response.Paginated(c, http.StatusOK, items, paginationResp)
+}
+
+func (h *Handler) GetSOSByTrackingID(c *gin.Context) {
+	logger := logging.FromContext(c.Request.Context())
+	trackingID, err := uuid.Parse(c.Param("tracking_id"))
+	if err != nil {
+		response.Error(c, ErrSOSNotFound)
+		return
+	}
+
+	result, err := h.service.GetSOSByTrackingID(c.Request.Context(), trackingID)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("get sos by tracking id failed", "error", err)
+		}
+		response.Error(c, err)
+		return
+	}
+
+	response.Data(c, http.StatusOK, toSOSResponse(result))
 }

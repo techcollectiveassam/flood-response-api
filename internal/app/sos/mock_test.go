@@ -3,21 +3,29 @@ package sos
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type mockRepository struct {
-	findNearbyResult *SOS
-	findNearbyErr    error
-	incrementErr     error
-	createErr        error
-	listResults      []*SOS
-	listTotal        int64
-	listErr          error
+	findDuplicateResult *SOS
+	findDuplicateErr    error
+	incrementErr        error
+	createErr           error
+	listResults         []*SOS
+	listTotal           int64
+	listErr             error
+	getByTrackingResult *SOS
+	getByTrackingErr    error
 
-	findNearbyCalled bool
-	findNearbyMobile string
-	incrementCalls   int
-	createCalls      int
+	getByTrackingCalls  int
+	getByTrackingID     uuid.UUID
+	findDuplicateCalled bool
+	findDuplicateMobile string
+	findDuplicateGeom   string
+	findDuplicateRadius float64
+	incrementCalls      int
+	createCalls         int
 }
 
 func (m *mockRepository) Create(ctx context.Context, sos *SOS) error {
@@ -32,13 +40,15 @@ func (m *mockRepository) Create(ctx context.Context, sos *SOS) error {
 	return nil
 }
 
-func (m *mockRepository) FindNearby(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error) {
-	m.findNearbyCalled = true
-	m.findNearbyMobile = mobile
-	if m.findNearbyErr != nil {
-		return nil, m.findNearbyErr
+func (m *mockRepository) FindDuplicate(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error) {
+	m.findDuplicateCalled = true
+	m.findDuplicateMobile = mobile
+	m.findDuplicateGeom = geometry
+	m.findDuplicateRadius = radiusMeters
+	if m.findDuplicateErr != nil {
+		return nil, m.findDuplicateErr
 	}
-	return m.findNearbyResult, nil
+	return m.findDuplicateResult, nil
 }
 
 func (m *mockRepository) IncrementReportCount(ctx context.Context, id int64) (*SOS, error) {
@@ -46,7 +56,7 @@ func (m *mockRepository) IncrementReportCount(ctx context.Context, id int64) (*S
 	if m.incrementErr != nil {
 		return nil, m.incrementErr
 	}
-	s := *m.findNearbyResult
+	s := *m.findDuplicateResult
 	s.ReportCount++
 	return &s, nil
 }
@@ -56,4 +66,13 @@ func (m *mockRepository) ListSOS(ctx context.Context, page, limit int) ([]*SOS, 
 		return nil, 0, m.listErr
 	}
 	return m.listResults, m.listTotal, nil
+}
+
+func (m *mockRepository) GetSOSByTrackingID(ctx context.Context, trackingID uuid.UUID) (*SOS, error) {
+	m.getByTrackingCalls++
+	m.getByTrackingID = trackingID
+	if m.getByTrackingErr != nil {
+		return nil, m.getByTrackingErr
+	}
+	return m.getByTrackingResult, nil
 }

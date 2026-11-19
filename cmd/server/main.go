@@ -28,7 +28,7 @@ func main() {
 
 	features := app.NewFeatures(application)
 
-	router := api.NewRouter(features, logger)
+	router := api.NewRouter(features, logger, application.Config.Cors.AllowedOrigins)
 
 	docs.Register(router)
 

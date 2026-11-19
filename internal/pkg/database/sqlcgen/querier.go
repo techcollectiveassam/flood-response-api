@@ -6,6 +6,8 @@ package sqlcgen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
@@ -17,11 +19,12 @@ type Querier interface {
 	// Guards the parent resource of the nested lookup so a missing command center
 	// can be reported as an unknown disaster rather than a missing command center.
 	DisasterExists(ctx context.Context, id int32) (bool, error)
-	FindSOSNearby(ctx context.Context, arg FindSOSNearbyParams) (FindSOSNearbyRow, error)
+	FindSOSDuplicate(ctx context.Context, arg FindSOSDuplicateParams) (FindSOSDuplicateRow, error)
 	GetAffectedArea(ctx context.Context, id int64) (GetAffectedAreaRow, error)
 	GetAffectedAreaReportByID(ctx context.Context, id int64) (AffectedAreaReport, error)
 	GetCommandCenterByDisaster(ctx context.Context, disasterID int32) (GetCommandCenterByDisasterRow, error)
 	GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error)
+	GetSOSRequestByTrackingID(ctx context.Context, trackingID uuid.UUID) (GetSOSRequestByTrackingIDRow, error)
 	IncrementReportCount(ctx context.Context, id int64) (int32, error)
 	IncrementSOSReportCount(ctx context.Context, id int64) (IncrementSOSReportCountRow, error)
 	ListAffectedAreas(ctx context.Context, arg ListAffectedAreasParams) ([]ListAffectedAreasRow, error)

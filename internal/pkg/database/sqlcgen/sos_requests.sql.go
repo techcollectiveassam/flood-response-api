@@ -8,6 +8,8 @@ package sqlcgen
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const createSOSRequest = `-- name: CreateSOSRequest :one
@@ -24,6 +26,7 @@ VALUES (
     $4
 )
 RETURNING id,
+          tracking_id,
           disaster_id,
           COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
           reporter_mobile, message, status, report_count, created_at, updated_at
@@ -38,6 +41,7 @@ type CreateSOSRequestParams struct {
 
 type CreateSOSRequestRow struct {
 	ID             int64       `json:"id"`
+	TrackingID     uuid.UUID   `json:"tracking_id"`
 	DisasterID     int32       `json:"disaster_id"`
 	Geometry       interface{} `json:"geometry"`
 	ReporterMobile *string     `json:"reporter_mobile"`
@@ -58,6 +62,7 @@ func (q *Queries) CreateSOSRequest(ctx context.Context, arg CreateSOSRequestPara
 	var i CreateSOSRequestRow
 	err := row.Scan(
 		&i.ID,
+		&i.TrackingID,
 		&i.DisasterID,
 		&i.Geometry,
 		&i.ReporterMobile,
@@ -70,34 +75,45 @@ func (q *Queries) CreateSOSRequest(ctx context.Context, arg CreateSOSRequestPara
 	return i, err
 }
 
-const findSOSNearby = `-- name: FindSOSNearby :one
+const findSOSDuplicate = `-- name: FindSOSDuplicate :one
 SELECT id,
+       tracking_id,
        disaster_id,
        COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
        reporter_mobile, message, status, report_count, created_at, updated_at
 FROM sos_requests
 WHERE disaster_id = $1
   AND status IN ('reported', 'active')
-  AND geom IS NOT NULL
-  AND ($2::text = '' OR reporter_mobile = $2)
-  AND ST_DWithin(
-        geom::geography,
-        ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography,
-        $4::double precision
+  AND (
+        ($2::text <> '' AND reporter_mobile = $2)
+        OR (
+            $2::text = ''
+            AND geom IS NOT NULL
+            AND CASE
+                WHEN $3::text <> '' THEN ST_DWithin(
+                    geom::geography,
+                    ST_SetSRID(ST_GeomFromGeoJSON($3::text), 4326)::geography,
+                    $4::double precision
+                )
+                ELSE FALSE
+            END
+        )
       )
-ORDER BY created_at DESC, id DESC
+ORDER BY CASE WHEN $2::text <> '' AND reporter_mobile = $2 THEN 0 ELSE 1 END,
+         created_at DESC, id DESC
 LIMIT 1
 `
 
-type FindSOSNearbyParams struct {
+type FindSOSDuplicateParams struct {
 	DisasterID int32   `json:"disaster_id"`
 	Column2    string  `json:"column_2"`
 	Column3    string  `json:"column_3"`
 	Column4    float64 `json:"column_4"`
 }
 
-type FindSOSNearbyRow struct {
+type FindSOSDuplicateRow struct {
 	ID             int64       `json:"id"`
+	TrackingID     uuid.UUID   `json:"tracking_id"`
 	DisasterID     int32       `json:"disaster_id"`
 	Geometry       interface{} `json:"geometry"`
 	ReporterMobile *string     `json:"reporter_mobile"`
@@ -108,16 +124,58 @@ type FindSOSNearbyRow struct {
 	UpdatedAt      time.Time   `json:"updated_at"`
 }
 
-func (q *Queries) FindSOSNearby(ctx context.Context, arg FindSOSNearbyParams) (FindSOSNearbyRow, error) {
-	row := q.db.QueryRow(ctx, findSOSNearby,
+func (q *Queries) FindSOSDuplicate(ctx context.Context, arg FindSOSDuplicateParams) (FindSOSDuplicateRow, error) {
+	row := q.db.QueryRow(ctx, findSOSDuplicate,
 		arg.DisasterID,
 		arg.Column2,
 		arg.Column3,
 		arg.Column4,
 	)
-	var i FindSOSNearbyRow
+	var i FindSOSDuplicateRow
 	err := row.Scan(
 		&i.ID,
+		&i.TrackingID,
+		&i.DisasterID,
+		&i.Geometry,
+		&i.ReporterMobile,
+		&i.Message,
+		&i.Status,
+		&i.ReportCount,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getSOSRequestByTrackingID = `-- name: GetSOSRequestByTrackingID :one
+SELECT id,
+       tracking_id,
+       disaster_id,
+       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
+       reporter_mobile, message, status, report_count, created_at, updated_at
+FROM sos_requests
+WHERE tracking_id = $1
+`
+
+type GetSOSRequestByTrackingIDRow struct {
+	ID             int64       `json:"id"`
+	TrackingID     uuid.UUID   `json:"tracking_id"`
+	DisasterID     int32       `json:"disaster_id"`
+	Geometry       interface{} `json:"geometry"`
+	ReporterMobile *string     `json:"reporter_mobile"`
+	Message        *string     `json:"message"`
+	Status         SosStatus   `json:"status"`
+	ReportCount    int32       `json:"report_count"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+}
+
+func (q *Queries) GetSOSRequestByTrackingID(ctx context.Context, trackingID uuid.UUID) (GetSOSRequestByTrackingIDRow, error) {
+	row := q.db.QueryRow(ctx, getSOSRequestByTrackingID, trackingID)
+	var i GetSOSRequestByTrackingIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.TrackingID,
 		&i.DisasterID,
 		&i.Geometry,
 		&i.ReporterMobile,
@@ -136,6 +194,7 @@ SET report_count = report_count + 1,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING id,
+          tracking_id,
           disaster_id,
           COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
           reporter_mobile, message, status, report_count, created_at, updated_at
@@ -143,6 +202,7 @@ RETURNING id,
 
 type IncrementSOSReportCountRow struct {
 	ID             int64       `json:"id"`
+	TrackingID     uuid.UUID   `json:"tracking_id"`
 	DisasterID     int32       `json:"disaster_id"`
 	Geometry       interface{} `json:"geometry"`
 	ReporterMobile *string     `json:"reporter_mobile"`
@@ -158,6 +218,7 @@ func (q *Queries) IncrementSOSReportCount(ctx context.Context, id int64) (Increm
 	var i IncrementSOSReportCountRow
 	err := row.Scan(
 		&i.ID,
+		&i.TrackingID,
 		&i.DisasterID,
 		&i.Geometry,
 		&i.ReporterMobile,
@@ -172,6 +233,7 @@ func (q *Queries) IncrementSOSReportCount(ctx context.Context, id int64) (Increm
 
 const listSOSRequests = `-- name: ListSOSRequests :many
 SELECT id,
+       tracking_id,
        disaster_id,
        COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
        reporter_mobile, message, status, report_count, created_at, updated_at,
@@ -188,6 +250,7 @@ type ListSOSRequestsParams struct {
 
 type ListSOSRequestsRow struct {
 	ID             int64       `json:"id"`
+	TrackingID     uuid.UUID   `json:"tracking_id"`
 	DisasterID     int32       `json:"disaster_id"`
 	Geometry       interface{} `json:"geometry"`
 	ReporterMobile *string     `json:"reporter_mobile"`
@@ -210,6 +273,7 @@ func (q *Queries) ListSOSRequests(ctx context.Context, arg ListSOSRequestsParams
 		var i ListSOSRequestsRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.TrackingID,
 			&i.DisasterID,
 			&i.Geometry,
 			&i.ReporterMobile,

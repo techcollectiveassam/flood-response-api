@@ -3,6 +3,7 @@ package sos
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/pagination"
@@ -12,6 +13,7 @@ var (
 	ErrInvalidSOS        = apperror.BadRequest("invalid_sos", "either reporter_mobile or location is required")
 	ErrInvalidLocation   = apperror.BadRequest("invalid_location", "latitude and longitude must be provided together")
 	ErrInvalidCoordinate = apperror.BadRequest("invalid_location", "latitude must be within -90..90 and longitude within -180..180")
+	ErrSOSNotFound       = apperror.NotFound("sos_not_found", "no sos request found for the given tracking id")
 )
 
 type Service struct {
@@ -26,7 +28,7 @@ func NewService(repository Repository, duplicateRadiusMeters float64) *Service {
 	}
 }
 
-// CreateSOS creates a new SOS request or merges into a nearby duplicate. The
+// CreateSOS creates a new SOS request or merges it into a duplicate. The
 // returned boolean reports whether a new row was created.
 func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bool, error) {
 	logger := logging.FromContext(ctx)
@@ -39,28 +41,26 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bo
 		return nil, false, err
 	}
 
-	if req.Location != nil && req.Location.Latitude != nil {
-		geometry := pointGeoJSON(req.Location.Longitude, req.Location.Latitude)
-		matched, err := s.repository.FindNearby(ctx, req.DisasterID, req.ReporterMobile, geometry, s.duplicateRadiusMeters)
+	geometry := pointGeoJSON(locationLongitude(req.Location), locationLatitude(req.Location))
+	matched, err := s.repository.FindDuplicate(ctx, req.DisasterID, req.ReporterMobile, geometry, s.duplicateRadiusMeters)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("find duplicate sos", "error", err)
+		}
+		return nil, false, err
+	}
+
+	if matched != nil {
+		existing, err := s.repository.IncrementReportCount(ctx, matched.ID)
 		if err != nil {
 			if apperror.HTTPStatus(err) >= 500 {
-				logger.Error("find nearby sos", "error", err)
+				logger.Error("increment sos report count", "error", err)
 			}
 			return nil, false, err
 		}
 
-		if matched != nil {
-			existing, err := s.repository.IncrementReportCount(ctx, matched.ID)
-			if err != nil {
-				if apperror.HTTPStatus(err) >= 500 {
-					logger.Error("increment sos report count", "error", err)
-				}
-				return nil, false, err
-			}
-
-			logger.Debug("duplicate sos merged", "id", existing.ID, "report_count", existing.ReportCount)
-			return existing, false, nil
-		}
+		logger.Debug("duplicate sos merged", "id", existing.ID, "report_count", existing.ReportCount)
+		return existing, false, nil
 	}
 
 	sosRequest := &SOS{
@@ -129,4 +129,21 @@ func (s *Service) ListSOS(ctx context.Context, page, limit int) (*pagination.Res
 
 	logger.Debug("sos listed", "count", len(sosList), "total", total)
 	return &pagination.Result[*SOS]{Items: sosList, Total: total}, nil
+}
+
+func (s *Service) GetSOSByTrackingID(ctx context.Context, trackingID uuid.UUID) (*SOS, error) {
+	logger := logging.FromContext(ctx)
+	sosRequest, err := s.repository.GetSOSByTrackingID(ctx, trackingID)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("get sos by tracking id", "error", err)
+		}
+		return nil, err
+	}
+	if sosRequest == nil {
+		return nil, ErrSOSNotFound
+	}
+
+	logger.Debug("sos retrieved", "id", sosRequest.ID)
+	return sosRequest, nil
 }

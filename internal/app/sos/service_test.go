@@ -4,22 +4,26 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateSOS(t *testing.T) {
 	tests := []struct {
-		name           string
-		req            CreateSOSRequest
-		findNearby     *SOS
-		findNearbyErr  error
-		repoErr        error
-		wantErr        error
-		wantCreated    bool
-		wantFindNearby bool
-		wantMobile     string
-		wantIncrements int
-		wantCreates    int
+		name              string
+		req               CreateSOSRequest
+		findDuplicate     *SOS
+		findDuplicateErr  error
+		repoErr           error
+		wantErr           error
+		wantCreated       bool
+		wantFindDuplicate bool
+		wantMobile        string
+		wantGeometry      string
+		wantRadius        float64
+		checkQueryArgs    bool
+		wantIncrements    int
+		wantCreates       int
 	}{
 		{
 			name: "creates when no nearby match",
@@ -27,9 +31,9 @@ func TestCreateSOS(t *testing.T) {
 				DisasterID: 7,
 				Location:   location(26.18, 91.73),
 			},
-			wantFindNearby: true,
-			wantCreated:    true,
-			wantCreates:    1,
+			wantFindDuplicate: true,
+			wantCreated:       true,
+			wantCreates:       1,
 		},
 		{
 			name: "merges into nearby match",
@@ -37,35 +41,43 @@ func TestCreateSOS(t *testing.T) {
 				DisasterID: 7,
 				Location:   location(26.18, 91.73),
 			},
-			findNearby:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
-			wantFindNearby: true,
-			wantCreated:    false,
-			wantIncrements: 1,
-			wantCreates:    0,
+			findDuplicate:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
+			wantFindDuplicate: true,
+			wantCreated:       false,
+			wantIncrements:    1,
+			wantCreates:       0,
 		},
 		{
-			name: "mobile scopes the nearby lookup",
+			name: "same mobile matches",
 			req: CreateSOSRequest{
 				DisasterID:     7,
 				ReporterMobile: "0000000000",
 				Location:       location(26.18, 91.73),
 			},
-			findNearby:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
-			wantFindNearby: true,
-			wantMobile:     "0000000000",
-			wantCreated:    false,
-			wantIncrements: 1,
-			wantCreates:    0,
+			findDuplicate:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
+			wantFindDuplicate: true,
+			wantMobile:        "0000000000",
+			wantGeometry:      `{"type":"Point","coordinates":[91.73,26.18]}`,
+			wantRadius:        100,
+			checkQueryArgs:    true,
+			wantCreated:       false,
+			wantIncrements:    1,
+			wantCreates:       0,
 		},
 		{
-			name: "mobile only skips nearby lookup",
+			name: "mobile only checks for duplicate",
 			req: CreateSOSRequest{
 				DisasterID:     7,
 				ReporterMobile: "0000000000",
 			},
-			wantFindNearby: false,
-			wantCreated:    true,
-			wantCreates:    1,
+			findDuplicate:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
+			wantFindDuplicate: true,
+			wantMobile:        "0000000000",
+			wantRadius:        100,
+			checkQueryArgs:    true,
+			wantCreated:       false,
+			wantIncrements:    1,
+			wantCreates:       0,
 		},
 		{
 			name: "empty location with mobile creates without geometry",
@@ -74,9 +86,10 @@ func TestCreateSOS(t *testing.T) {
 				ReporterMobile: "0000000000",
 				Location:       &Location{},
 			},
-			wantFindNearby: false,
-			wantCreated:    true,
-			wantCreates:    1,
+			wantFindDuplicate: true,
+			wantMobile:        "0000000000",
+			wantCreated:       true,
+			wantCreates:       1,
 		},
 		{
 			name: "missing mobile and location",
@@ -110,14 +123,14 @@ func TestCreateSOS(t *testing.T) {
 			wantErr: ErrInvalidCoordinate,
 		},
 		{
-			name: "find nearby error",
+			name: "find duplicate error",
 			req: CreateSOSRequest{
 				DisasterID: 7,
 				Location:   location(26.18, 91.73),
 			},
-			findNearbyErr:  assert.AnError,
-			wantErr:        assert.AnError,
-			wantFindNearby: true,
+			findDuplicateErr:  assert.AnError,
+			wantErr:           assert.AnError,
+			wantFindDuplicate: true,
 		},
 		{
 			name: "create repository error",
@@ -125,26 +138,30 @@ func TestCreateSOS(t *testing.T) {
 				DisasterID: 7,
 				Location:   location(26.18, 91.73),
 			},
-			repoErr:        assert.AnError,
-			wantErr:        assert.AnError,
-			wantFindNearby: true,
-			wantCreates:    1,
+			repoErr:           assert.AnError,
+			wantErr:           assert.AnError,
+			wantFindDuplicate: true,
+			wantCreates:       1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRepository{
-				findNearbyResult: tt.findNearby,
-				findNearbyErr:    tt.findNearbyErr,
-				createErr:        tt.repoErr,
+				findDuplicateResult: tt.findDuplicate,
+				findDuplicateErr:    tt.findDuplicateErr,
+				createErr:           tt.repoErr,
 			}
 			svc := NewService(repo, 100)
 
 			result, created, err := svc.CreateSOS(context.Background(), tt.req)
 
-			assert.Equal(t, tt.wantFindNearby, repo.findNearbyCalled)
-			assert.Equal(t, tt.wantMobile, repo.findNearbyMobile)
+			assert.Equal(t, tt.wantFindDuplicate, repo.findDuplicateCalled)
+			assert.Equal(t, tt.wantMobile, repo.findDuplicateMobile)
+			if tt.checkQueryArgs {
+				assert.Equal(t, tt.wantGeometry, repo.findDuplicateGeom)
+				assert.Equal(t, tt.wantRadius, repo.findDuplicateRadius)
+			}
 			assert.Equal(t, tt.wantIncrements, repo.incrementCalls)
 			assert.Equal(t, tt.wantCreates, repo.createCalls)
 
@@ -172,6 +189,55 @@ func location(latitude, longitude float64) *Location {
 
 func fp(value float64) *float64 {
 	return &value
+}
+
+func TestGetSOSByTrackingID(t *testing.T) {
+	trackingID := uuid.MustParse("3f2a9c1e-7b4d-4e2a-9c1e-5d6f7a8b9c0d")
+	found := &SOS{ID: 9, TrackingID: trackingID, DisasterID: 7, Status: StatusReported, ReportCount: 2}
+
+	tests := []struct {
+		name    string
+		result  *SOS
+		repoErr error
+		wantErr error
+	}{
+		{
+			name:   "returns the sos for a known tracking id",
+			result: found,
+		},
+		{
+			name:    "returns not found when no sos matches",
+			result:  nil,
+			wantErr: ErrSOSNotFound,
+		},
+		{
+			name:    "propagates repository errors",
+			repoErr: assert.AnError,
+			wantErr: assert.AnError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepository{
+				getByTrackingResult: tt.result,
+				getByTrackingErr:    tt.repoErr,
+			}
+			svc := NewService(repo, 100)
+
+			result, err := svc.GetSOSByTrackingID(context.Background(), trackingID)
+
+			assert.Equal(t, 1, repo.getByTrackingCalls)
+			assert.Equal(t, trackingID, repo.getByTrackingID)
+			if tt.wantErr != nil {
+				assert.ErrorIs(t, err, tt.wantErr)
+				assert.Nil(t, result)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, found, result)
+		})
+	}
 }
 
 func TestListSOS(t *testing.T) {

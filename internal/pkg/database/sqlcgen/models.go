@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -339,4 +340,5 @@ type SosRequest struct {
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
 	DisasterID     int32       `json:"disaster_id"`
+	TrackingID     uuid.UUID   `json:"tracking_id"`
 }
