@@ -19,8 +19,8 @@ const bundlePath = `${outDir}/redoc.standalone.js`;
 mkdirSync(outDir, { recursive: true });
 
 execSync(
-  'npx --yes @redocly/cli build-docs docs/openapi.yaml -o /tmp/build-docs.html ' +
-    '--title "Flood Response API" --disableGoogleFont',
+  'npx --yes @redocly/cli@v1-archive build-docs docs/openapi.yaml -o /tmp/build-docs.html ' +
+    '--title "Flood Response API"',
   { stdio: "inherit" },
 );
 

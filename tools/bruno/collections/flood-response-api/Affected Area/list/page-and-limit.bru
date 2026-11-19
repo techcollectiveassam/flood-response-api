@@ -1,0 +1,42 @@
+meta {
+  name: List affected areas - page and limit
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/affected-areas?page=2&limit=10
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+  res.body.data: isJson
+  res.body.pagination: isJson
+}
+
+tests {
+  test("echoes the requested page and limit back", function() {
+    const pagination = res.getBody().pagination;
+    expect(pagination).to.have.property('page', 2);
+    expect(pagination).to.have.property('limit', 10);
+  });
+
+  test("returns at most the requested number of items", function() {
+    const data = res.getBody().data;
+    expect(data).to.be.an('array');
+    expect(data.length).to.be.at.most(10);
+  });
+
+  test("total pages is consistent with the total and the limit", function() {
+    const pagination = res.getBody().pagination;
+    if (pagination.total === 0) {
+      expect(pagination.total_pages).to.equal(0);
+      return;
+    }
+    const expected = Math.ceil(pagination.total / pagination.limit);
+    expect(pagination.total_pages).to.equal(expected);
+  });
+}

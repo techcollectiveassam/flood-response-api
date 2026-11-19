@@ -1,0 +1,27 @@
+meta {
+  name: Get an affected area - invalid id
+  type: http
+  seq: 5
+
+}
+
+get {
+  url: {{baseUrl}}/api/v1/affected-areas/abc
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_id
+}
+
+tests {
+  test("non-numeric id is rejected", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'invalid_id');
+    expect(err).to.have.property('message', 'affected area id must be a number');
+  });
+}

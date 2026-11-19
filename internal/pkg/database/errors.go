@@ -13,8 +13,9 @@ const foreignKeyViolation = "23503"
 // represent. Constraint violations carry one piece of context (the constraint
 // name), so table-specific rules like "disaster no longer exists" live here.
 var constraintToError = map[string]*apperror.Error{
-	"affected_areas_disaster_id_fkey": apperror.NotFound("disaster_not_found", "disaster not found"),
-	"sos_requests_disaster_id_fkey":   apperror.NotFound("disaster_not_found", "disaster not found"),
+	"affected_areas_disaster_id_fkey":  apperror.NotFound("disaster_not_found", "disaster not found"),
+	"sos_requests_disaster_id_fkey":    apperror.NotFound("disaster_not_found", "disaster not found"),
+	"command_centers_disaster_id_fkey": apperror.NotFound("disaster_not_found", "disaster not found"),
 }
 
 func TranslateError(err error) error {

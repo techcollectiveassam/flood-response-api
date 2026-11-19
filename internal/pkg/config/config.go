@@ -15,6 +15,11 @@ type Config struct {
 	Logger      LoggerConfig
 	Pagination  PaginationConfig
 	Sos         SosConfig
+	Cors        CorsConfig
+}
+
+type CorsConfig struct {
+	AllowedOrigins []string
 }
 
 type SosConfig struct {
@@ -75,7 +80,12 @@ func Load() (*Config, error) {
 		Logger:      loggerConfig,
 		Pagination:  paginationConfig,
 		Sos:         sosConfig,
+		Cors:        loadCorsConfig(),
 	}, nil
+}
+
+func loadCorsConfig() CorsConfig {
+	return CorsConfig{AllowedOrigins: listValue("CORS_ALLOWED_ORIGINS")}
 }
 
 func loadSosConfig() (SosConfig, error) {
@@ -159,6 +169,17 @@ func valueOrDefault(key, fallback string) string {
 	}
 
 	return fallback
+}
+
+func listValue(key string) []string {
+	var values []string
+	for _, item := range strings.Split(os.Getenv(key), ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			values = append(values, item)
+		}
+	}
+
+	return values
 }
 
 func intValue(key string, fallback, min int) (int, error) {

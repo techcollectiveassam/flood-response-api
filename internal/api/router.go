@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -12,9 +13,16 @@ import (
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/validation"
 )
 
-func NewRouter(features *app.Features, logger *slog.Logger) *gin.Engine {
+func NewRouter(features *app.Features, logger *slog.Logger, allowedOrigins []string) *gin.Engine {
 	router := gin.New()
 	router.Use(middleware.LoggingMiddleware(logger), gin.Recovery())
+	if len(allowedOrigins) > 0 {
+		router.Use(cors.New(cors.Config{
+			AllowOrigins: allowedOrigins,
+			AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
+			AllowHeaders: []string{"Content-Type"},
+		}))
+	}
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		validation.RegisterJSONTagNames(v)
 	}
@@ -24,6 +32,7 @@ func NewRouter(features *app.Features, logger *slog.Logger) *gin.Engine {
 
 	v1 := router.Group("/api/v1")
 	features.AffectedArea.RegisterRoutes(v1)
+	features.CommandCenter.RegisterRoutes(v1)
 	features.Disaster.RegisterRoutes(v1)
 	features.SOS.RegisterRoutes(v1)
 

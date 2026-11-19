@@ -1,0 +1,31 @@
+meta {
+  name: List affected areas - max limit
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/affected-areas?limit=100
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+  res.body.pagination: isJson
+}
+
+tests {
+  test("a limit at the configured maximum is accepted", function() {
+    const pagination = res.getBody().pagination;
+    expect(pagination).to.have.property('limit', 100);
+    expect(pagination).to.have.property('page', 1);
+  });
+
+  test("returns at most 100 items", function() {
+    const data = res.getBody().data;
+    expect(data).to.be.an('array');
+    expect(data.length).to.be.at.most(100);
+  });
+}

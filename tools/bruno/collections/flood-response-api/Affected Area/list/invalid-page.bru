@@ -1,0 +1,35 @@
+meta {
+  name: List affected areas - invalid page
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/affected-areas?page=0
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+  res.body.error: isJson
+  res.body.error.code: eq invalid_query_params
+}
+
+tests {
+  test("page 0 is below the minimum of 1", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('code', 'invalid_query_params');
+    expect(err).to.have.property('message', 'validation error');
+  });
+
+  test("the failure is reported against the Page field", function() {
+    const err = res.getBody().error;
+    expect(err).to.have.property('details');
+    expect(err.details).to.be.an('array').that.is.not.empty;
+    const page = err.details.find(function(d) { return d.field === 'Page'; });
+    expect(page).to.be.an('object');
+    expect(page.message).to.equal('Page is invalid');
+  });
+}

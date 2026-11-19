@@ -20,6 +20,8 @@ tags:
     description: Platform level endpoints
   - name: disasters
     description: Disaster lifecycle management
+  - name: command-centers
+    description: Command centers operating during a disaster response
   - name: affected-areas
     description: Affected area reports and matching
   - name: sos
@@ -45,6 +47,10 @@ paths:
       tags: [disasters]
       operationId: createDisaster
       summary: Create a disaster entry
+      description: |
+        Creates a disaster entry. Both timestamps are optional: `starts_at`
+        defaults to the current time when omitted, while `ends_at` does not
+        and stays `null`.
       requestBody:
         required: true
         content:
@@ -99,6 +105,70 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/command-centers:
+    post:
+      tags: [command-centers]
+      operationId: createCommandCenter
+      summary: Create a command center
+      description: |
+        Registers a command center for a disaster. A disaster can have at most
+        one command center, so registering a second one for the same disaster
+        is rejected with `duplicate_record`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommandCenterRequest"
+            example:
+              disaster_id: 1
+              name: Brahmaputra Basin Control Room
+              type: government
+              description: District flood control room
+              contact_person: Rakesh
+              contact_mobile: "0000000000"
+              contact_email: control@example.org
+      responses:
+        "201":
+          description: Command center created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandCenterData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/DisasterNotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /api/v1/disasters/{id}/command-center:
+    get:
+      tags: [command-centers]
+      operationId: getCommandCenterByDisaster
+      summary: Get the command center for a disaster
+      description: |
+        Returns the command center belonging to a disaster. The disaster is
+        validated before its command center is read, so the 404 code tells the
+        two failure cases apart: `disaster_not_found` when the id matches no
+        disaster, and `command_center_not_found` when the disaster exists but
+        has no command center.
+      parameters:
+        - $ref: "#/components/parameters/DisasterId"
+      responses:
+        "200":
+          description: Command center retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommandCenterData"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/CommandCenterLookupNotFound"
         "500":
           $ref: "#/components/responses/InternalError"
   /api/v1/affected-areas:
@@ -182,10 +252,12 @@ paths:
       operationId: createSOS
       summary: Send an SOS request
       description: |
-        Sends an SOS request. If a nearby request for the same disaster exists
-        within the configured duplicate radius, the existing request is
-        returned with its report count incremented instead of creating a new
-        one.
+        Sends an SOS request. If an active or reported request for the same
+        disaster exists with the same reporter mobile number, it is treated as
+        a duplicate regardless of location. When no mobile number is provided,
+        a nearby request within the configured duplicate radius is treated as
+        a duplicate. The existing request is returned with its report count
+        incremented instead of creating a new one.
       requestBody:
         required: true
         content:
@@ -234,8 +306,42 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+  /api/v1/sos/{tracking_id}:
+    get:
+      tags: [sos]
+      operationId: getSOSByTrackingID
+      summary: Get an SOS request by tracking id
+      description: |
+        Returns the SOS request for the given tracking id. An id that is not a
+        valid UUID or does not match any request returns `sos_not_found`.
+      parameters:
+        - $ref: "#/components/parameters/SOSTrackingId"
+      responses:
+        "200":
+          description: SOS request retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SOSData"
+        "404":
+          description: No SOS request matches the tracking id
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   parameters:
+    SOSTrackingId:
+      name: tracking_id
+      in: path
+      required: true
+      description: Public tracking id returned when the SOS request was created
+      schema:
+        type: string
+        format: uuid
+        example: 3f2a9c1e-7b4d-4e2a-9c1e-5d6f7a8b9c0d
     DisasterId:
       name: id
       in: path
@@ -291,6 +397,48 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: The request conflicts with an existing record
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: duplicate_record
+              message: a record with the same key already exists
+    DisasterNotFound:
+      description: |
+        No disaster exists for the supplied `disaster_id`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error:
+              code: disaster_not_found
+              message: disaster not found
+    CommandCenterLookupNotFound:
+      description: |
+        The nested lookup could not be resolved. The disaster is validated before
+        its command center is read, so the error code distinguishes the cases.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          examples:
+            unknownDisaster:
+              summary: The id matches no disaster
+              value:
+                error:
+                  code: disaster_not_found
+                  message: disaster not found
+            noCommandCenter:
+              summary: The disaster exists but has no command center
+              value:
+                error:
+                  code: command_center_not_found
+                  message: command center not found
   schemas:
     HealthStatus:
       type: object
@@ -318,11 +466,16 @@ components:
         starts_at:
           type: [string, "null"]
           format: date-time
-          description: UTC RFC3339 timestamp (always ends in Z)
+          description: |
+            UTC RFC3339 timestamp (always ends in Z). Populated on creation
+            even when the request omits it, because the API defaults it to the
+            current time. May be `null` only for rows created outside this API.
         ends_at:
           type: [string, "null"]
           format: date-time
-          description: UTC RFC3339 timestamp (always ends in Z)
+          description: |
+            UTC RFC3339 timestamp (always ends in Z). Not defaulted, so `null`
+            when the request omitted it.
     CreateDisasterRequest:
       type: object
       required: [name, type]
@@ -337,9 +490,19 @@ components:
         starts_at:
           type: [string, "null"]
           format: date-time
+          description: |
+            Optional. If it is omitted or sent as `null`, the API defaults it
+            to the current time (`CURRENT_TIMESTAMP` on the database server)
+            and returns the generated value in the response. A value sent by
+            the client is normalized to UTC and returned as RFC3339.
         ends_at:
           type: [string, "null"]
           format: date-time
+          description: |
+            Optional and **not** defaulted. If it is omitted or sent as `null`
+            it is stored as `null` and the `ends_at` key is left out of the
+            response entirely. A value sent by the client is normalized to UTC
+            and returned as RFC3339.
     DisasterType:
       type: string
       enum: [flood, earthquake, landslide]
@@ -360,6 +523,65 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Disaster"
+    CommandCenterType:
+      type: string
+      enum: [government, ngo, group, other]
+    CommandCenter:
+      type: object
+      required: [id, disaster_id, name, type]
+      properties:
+        id:
+          type: integer
+          format: int32
+        disaster_id:
+          type: integer
+          format: int32
+          description: Disaster the command center operates for
+        name:
+          type: string
+        type:
+          $ref: "#/components/schemas/CommandCenterType"
+        description:
+          type: string
+          description: Omitted from the response when empty
+        contact_person:
+          type: string
+          description: Omitted from the response when empty
+        contact_mobile:
+          type: string
+          description: Omitted from the response when empty
+        contact_email:
+          type: string
+          description: Omitted from the response when empty
+    CreateCommandCenterRequest:
+      type: object
+      required: [disaster_id, name, type]
+      properties:
+        disaster_id:
+          type: integer
+          format: int32
+        name:
+          type: string
+          maxLength: 255
+        type:
+          $ref: "#/components/schemas/CommandCenterType"
+        description:
+          type: string
+        contact_person:
+          type: string
+          maxLength: 255
+        contact_mobile:
+          type: string
+          maxLength: 20
+        contact_email:
+          type: string
+          maxLength: 255
+    CommandCenterData:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/CommandCenter"
     LocationPayload:
       type: object
       required: [source]
@@ -536,14 +758,12 @@ components:
             - type: "null"
     SOS:
       type: object
-      required: [id, disaster_id, status, report_count, created_at]
+      required: [tracking_id, status, report_count, created_at]
       properties:
-        id:
-          type: integer
-          format: int64
-        disaster_id:
-          type: integer
-          format: int32
+        tracking_id:
+          type: string
+          format: uuid
+          description: Public identifier for tracking this SOS request
         location:
           anyOf:
             - $ref: "#/components/schemas/SOSLocation"

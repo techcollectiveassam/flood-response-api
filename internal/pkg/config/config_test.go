@@ -116,3 +116,37 @@ func TestLoadRejectsMaxLimitBelowDefaultLimit(t *testing.T) {
 		t.Errorf("Load() error = %q, want PAGINATION_MAX_LIMIT", err)
 	}
 }
+
+func TestLoadCorsDefaultsToNoOrigins(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://user:password@db:5432/flood_response?sslmode=disable")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "")
+
+	configuration, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if len(configuration.Cors.AllowedOrigins) != 0 {
+		t.Errorf("AllowedOrigins = %v, want none", configuration.Cors.AllowedOrigins)
+	}
+}
+
+func TestLoadReadsCorsAllowedOrigins(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://user:password@db:5432/flood_response?sslmode=disable")
+	t.Setenv("CORS_ALLOWED_ORIGINS", " https://app.example.org, https://admin.example.org ,,")
+
+	configuration, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	want := []string{"https://app.example.org", "https://admin.example.org"}
+	if len(configuration.Cors.AllowedOrigins) != len(want) {
+		t.Fatalf("AllowedOrigins = %v, want %v", configuration.Cors.AllowedOrigins, want)
+	}
+	for i := range want {
+		if configuration.Cors.AllowedOrigins[i] != want[i] {
+			t.Errorf("AllowedOrigins[%d] = %q, want %q", i, configuration.Cors.AllowedOrigins[i], want[i])
+		}
+	}
+}
