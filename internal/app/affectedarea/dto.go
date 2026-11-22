@@ -72,6 +72,7 @@ type AffectedAreaResponse struct {
 }
 
 type AffectedAreaReportResponse struct {
+	RefID     string          `json:"ref_id"`
 	Severity  string          `json:"severity"`
 	Location  json.RawMessage `json:"location"`
 	Reporter  *Reporter       `json:"reporter,omitempty"`
@@ -103,6 +104,7 @@ func toAffectedAreaResponse(area *AffectedArea) AffectedAreaResponse {
 
 func toAffectedAreaReportResponse(report *AffectedAreaReport) AffectedAreaReportResponse {
 	resp := AffectedAreaReportResponse{
+		RefID:     report.RefID.String(),
 		Severity:  report.Severity,
 		Location:  report.LocationPayload,
 		CreatedAt: timeutil.FormatUTC(report.CreatedAt),

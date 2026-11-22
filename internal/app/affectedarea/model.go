@@ -27,6 +27,7 @@ type AffectedArea struct {
 
 type AffectedAreaReport struct {
 	ID              int64
+	RefID           uuid.UUID
 	AreaID          int64
 	Description     string
 	LocationPayload []byte

@@ -51,6 +51,7 @@ func TestCreateAffectedAreaTextSource(t *testing.T) {
 	report := repo.createdReport
 	assert.NotNil(t, report)
 	assert.Equal(t, area.ID, report.AreaID)
+	assert.NotEqual(t, uuid.Nil, report.RefID)
 	assert.Equal(t, "medium", report.Severity)
 	assert.Empty(t, report.ReporterName)
 	assert.Empty(t, report.ReporterMobile)

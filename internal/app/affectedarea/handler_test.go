@@ -229,6 +229,9 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 						AffectedArea struct {
 							RefID string `json:"ref_id"`
 						} `json:"affected_area"`
+						Report struct {
+							RefID string `json:"ref_id"`
+						} `json:"report"`
 						IsNewArea   bool    `json:"is_new_area"`
 						Confidence  float64 `json:"confidence"`
 						MatchReason string  `json:"match_reason"`
@@ -237,6 +240,7 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.NotEmpty(t, resp.Data.AffectedArea.RefID)
+				assert.Equal(t, "66666666-6666-6666-6666-666666666666", resp.Data.Report.RefID)
 				assert.True(t, resp.Data.IsNewArea)
 				assert.Equal(t, MatchReasonUnmatchable, resp.Data.MatchReason)
 			}

@@ -49,6 +49,9 @@ func (m *mockRepository) CreateReport(ctx context.Context, report *AffectedAreaR
 	if report.ID == 0 {
 		report.ID = 1
 	}
+	if report.RefID == uuid.Nil {
+		report.RefID = uuid.MustParse("66666666-6666-6666-6666-666666666666")
+	}
 	m.createdReport = report
 	return nil
 }

@@ -100,6 +100,7 @@ func (r *PostgresRepository) CreateReport(ctx context.Context, report *AffectedA
 	}
 
 	report.ID = result.ID
+	report.RefID = result.RefID
 	report.AreaID = result.AreaID
 	report.Description = database.TextValue(result.Description)
 	report.LocationPayload = result.LocationPayload

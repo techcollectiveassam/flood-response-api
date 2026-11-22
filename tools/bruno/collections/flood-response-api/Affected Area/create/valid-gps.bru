@@ -59,6 +59,7 @@ tests {
     expect(area.latitude).to.equal(26.2);
     expect(area.longitude).to.equal(91.8);
   
+    expect(data.report).to.have.property('ref_id');
     expect(data.report.reporter).to.eql({ name: 'Rakesh', mobile: '0000000000' });
   });
   

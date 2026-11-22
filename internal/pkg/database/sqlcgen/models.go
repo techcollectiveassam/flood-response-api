@@ -302,6 +302,7 @@ type AffectedAreaReport struct {
 	ReporterName    *string              `json:"reporter_name"`
 	ReporterMobile  *string              `json:"reporter_mobile"`
 	CreatedAt       time.Time            `json:"created_at"`
+	RefID           uuid.UUID            `json:"ref_id"`
 }
 
 type CommandCenter struct {

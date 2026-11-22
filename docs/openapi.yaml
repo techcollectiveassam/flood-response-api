@@ -666,8 +666,12 @@ components:
           format: int64
     AffectedAreaReport:
       type: object
-      required: [severity, location, created_at]
+      required: [ref_id, severity, location, created_at]
       properties:
+        ref_id:
+          type: string
+          format: uuid
+          description: Publicly available unique identifier for the report
         severity:
           $ref: "#/components/schemas/Severity"
         location:

@@ -12,7 +12,7 @@ import (
 
 type Querier interface {
 	CreateAffectedArea(ctx context.Context, arg CreateAffectedAreaParams) (CreateAffectedAreaRow, error)
-	CreateAffectedAreaReport(ctx context.Context, arg CreateAffectedAreaReportParams) (AffectedAreaReport, error)
+	CreateAffectedAreaReport(ctx context.Context, arg CreateAffectedAreaReportParams) (CreateAffectedAreaReportRow, error)
 	CreateCommandCenter(ctx context.Context, arg CreateCommandCenterParams) (CreateCommandCenterRow, error)
 	CreateDisaster(ctx context.Context, arg CreateDisasterParams) (CreateDisasterRow, error)
 	CreateSOSRequest(ctx context.Context, arg CreateSOSRequestParams) (CreateSOSRequestRow, error)
@@ -21,7 +21,7 @@ type Querier interface {
 	DisasterExists(ctx context.Context, id int32) (bool, error)
 	FindSOSDuplicate(ctx context.Context, arg FindSOSDuplicateParams) (FindSOSDuplicateRow, error)
 	GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (GetAffectedAreaByRefIDRow, error)
-	GetAffectedAreaReportByID(ctx context.Context, id int64) (AffectedAreaReport, error)
+	GetAffectedAreaReportByRefID(ctx context.Context, refID uuid.UUID) (GetAffectedAreaReportByRefIDRow, error)
 	GetCommandCenterByDisaster(ctx context.Context, disasterID int32) (GetCommandCenterByDisasterRow, error)
 	GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error)
 	GetSOSRequestByTrackingID(ctx context.Context, trackingID uuid.UUID) (GetSOSRequestByTrackingIDRow, error)

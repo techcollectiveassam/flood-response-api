@@ -7,6 +7,9 @@ package sqlcgen
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 const createAffectedAreaReport = `-- name: CreateAffectedAreaReport :one
@@ -19,7 +22,7 @@ INSERT INTO affected_area_reports (
     reporter_mobile
 )
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, area_id, description, location_payload, severity, reporter_name, reporter_mobile, created_at
+RETURNING id, ref_id, area_id, description, location_payload, severity, reporter_name, reporter_mobile, created_at
 `
 
 type CreateAffectedAreaReportParams struct {
@@ -31,7 +34,19 @@ type CreateAffectedAreaReportParams struct {
 	ReporterMobile  *string              `json:"reporter_mobile"`
 }
 
-func (q *Queries) CreateAffectedAreaReport(ctx context.Context, arg CreateAffectedAreaReportParams) (AffectedAreaReport, error) {
+type CreateAffectedAreaReportRow struct {
+	ID              int64                `json:"id"`
+	RefID           uuid.UUID            `json:"ref_id"`
+	AreaID          int64                `json:"area_id"`
+	Description     *string              `json:"description"`
+	LocationPayload []byte               `json:"location_payload"`
+	Severity        AffectedAreaSeverity `json:"severity"`
+	ReporterName    *string              `json:"reporter_name"`
+	ReporterMobile  *string              `json:"reporter_mobile"`
+	CreatedAt       time.Time            `json:"created_at"`
+}
+
+func (q *Queries) CreateAffectedAreaReport(ctx context.Context, arg CreateAffectedAreaReportParams) (CreateAffectedAreaReportRow, error) {
 	row := q.db.QueryRow(ctx, createAffectedAreaReport,
 		arg.AreaID,
 		arg.Description,
@@ -40,9 +55,10 @@ func (q *Queries) CreateAffectedAreaReport(ctx context.Context, arg CreateAffect
 		arg.ReporterName,
 		arg.ReporterMobile,
 	)
-	var i AffectedAreaReport
+	var i CreateAffectedAreaReportRow
 	err := row.Scan(
 		&i.ID,
+		&i.RefID,
 		&i.AreaID,
 		&i.Description,
 		&i.LocationPayload,
@@ -54,17 +70,30 @@ func (q *Queries) CreateAffectedAreaReport(ctx context.Context, arg CreateAffect
 	return i, err
 }
 
-const getAffectedAreaReportByID = `-- name: GetAffectedAreaReportByID :one
-SELECT id, area_id, description, location_payload, severity, reporter_name, reporter_mobile, created_at
+const getAffectedAreaReportByRefID = `-- name: GetAffectedAreaReportByRefID :one
+SELECT id, ref_id, area_id, description, location_payload, severity, reporter_name, reporter_mobile, created_at
 FROM affected_area_reports
-WHERE id = $1
+WHERE ref_id = $1
 `
 
-func (q *Queries) GetAffectedAreaReportByID(ctx context.Context, id int64) (AffectedAreaReport, error) {
-	row := q.db.QueryRow(ctx, getAffectedAreaReportByID, id)
-	var i AffectedAreaReport
+type GetAffectedAreaReportByRefIDRow struct {
+	ID              int64                `json:"id"`
+	RefID           uuid.UUID            `json:"ref_id"`
+	AreaID          int64                `json:"area_id"`
+	Description     *string              `json:"description"`
+	LocationPayload []byte               `json:"location_payload"`
+	Severity        AffectedAreaSeverity `json:"severity"`
+	ReporterName    *string              `json:"reporter_name"`
+	ReporterMobile  *string              `json:"reporter_mobile"`
+	CreatedAt       time.Time            `json:"created_at"`
+}
+
+func (q *Queries) GetAffectedAreaReportByRefID(ctx context.Context, refID uuid.UUID) (GetAffectedAreaReportByRefIDRow, error) {
+	row := q.db.QueryRow(ctx, getAffectedAreaReportByRefID, refID)
+	var i GetAffectedAreaReportByRefIDRow
 	err := row.Scan(
 		&i.ID,
+		&i.RefID,
 		&i.AreaID,
 		&i.Description,
 		&i.LocationPayload,
