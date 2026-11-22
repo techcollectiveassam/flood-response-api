@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
@@ -23,7 +24,7 @@ type Repository interface {
 	UpdateAreaSeverity(ctx context.Context, id int64, severity string) error
 	IncrementReportCount(ctx context.Context, id int64) error
 	ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error)
-	GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error)
+	GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (*AffectedArea, error)
 }
 
 type PostgresRepository struct {
@@ -58,11 +59,10 @@ func (r *PostgresRepository) WithTx(ctx context.Context, fn func(Repository) err
 
 func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea) error {
 	result, err := r.queries.CreateAffectedArea(ctx, sqlcgen.CreateAffectedAreaParams{
-		Name:               area.Name,
 		Description:        database.NullableString(area.Description),
 		DisasterID:         area.DisasterID,
 		Location:           database.NullableString(area.Location),
-		Column5:            area.Geometry,
+		Column4:            area.Geometry,
 		Latitude:           area.Latitude,
 		Longitude:          area.Longitude,
 		Severity:           sqlcgen.AffectedAreaSeverity(area.Severity),
@@ -73,7 +73,7 @@ func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea)
 	}
 
 	area.ID = result.ID
-	area.Name = result.Name
+	area.RefID = result.RefID
 	area.Description = database.TextValue(result.Description)
 	area.DisasterID = result.DisasterID
 	area.Location = database.TextValue(result.Location)
@@ -89,7 +89,6 @@ func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea)
 func (r *PostgresRepository) CreateReport(ctx context.Context, report *AffectedAreaReport) error {
 	result, err := r.queries.CreateAffectedAreaReport(ctx, sqlcgen.CreateAffectedAreaReportParams{
 		AreaID:          report.AreaID,
-		Name:            report.Name,
 		Description:     database.NullableString(report.Description),
 		LocationPayload: report.LocationPayload,
 		Severity:        sqlcgen.AffectedAreaSeverity(report.Severity),
@@ -101,8 +100,8 @@ func (r *PostgresRepository) CreateReport(ctx context.Context, report *AffectedA
 	}
 
 	report.ID = result.ID
+	report.RefID = result.RefID
 	report.AreaID = result.AreaID
-	report.Name = result.Name
 	report.Description = database.TextValue(result.Description)
 	report.LocationPayload = result.LocationPayload
 	report.Severity = string(result.Severity)
@@ -143,7 +142,7 @@ func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit 
 	for i, area := range result {
 		areas[i] = &AffectedArea{
 			ID:                 area.ID,
-			Name:               area.Name,
+			RefID:              area.RefID,
 			Description:        database.TextValue(area.Description),
 			DisasterID:         area.DisasterID,
 			Location:           database.TextValue(area.Location),
@@ -159,8 +158,8 @@ func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit 
 	return areas, total, nil
 }
 
-func (r *PostgresRepository) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
-	result, err := r.queries.GetAffectedArea(ctx, id)
+func (r *PostgresRepository) GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (*AffectedArea, error) {
+	result, err := r.queries.GetAffectedAreaByRefID(ctx, refID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrAffectedAreaNotFound
@@ -170,7 +169,7 @@ func (r *PostgresRepository) GetAffectedArea(ctx context.Context, id int64) (*Af
 
 	return &AffectedArea{
 		ID:                 result.ID,
-		Name:               result.Name,
+		RefID:              result.RefID,
 		Description:        database.TextValue(result.Description),
 		DisasterID:         result.DisasterID,
 		Location:           database.TextValue(result.Location),

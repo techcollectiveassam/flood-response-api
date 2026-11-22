@@ -20,7 +20,6 @@ post {
 body:json {
   {
     "disaster_id": {{disasterId}},
-    "name": "Silchar water logging",
     "description": "Residents report water logging near the town stadium",
     "location": {
       "source": "text",
@@ -40,8 +39,8 @@ tests {
   test("text source uses description and is unmatchable", function() {
     const data = res.getBody().data;
     const area = data.affected_area;
-    expect(area).to.have.property('id');
-    expect(area).to.have.property('name', 'Silchar water logging');
+    expect(area).to.have.property('ref_id');
+    expect(area).to.have.property('location', 'Water logged near Silchar stadium');
     expect(area).to.have.property('severity', 'low');
     expect(data).to.have.property('is_new_area', true);
     expect(data).to.have.property('match_reason', 'unmatchable');

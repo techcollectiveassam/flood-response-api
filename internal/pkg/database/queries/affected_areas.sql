@@ -1,6 +1,5 @@
 -- name: CreateAffectedArea :one
 INSERT INTO affected_areas (
-    name,
     description,
     disaster_id,
     location,
@@ -15,20 +14,19 @@ VALUES (
     $1,
     $2,
     $3,
-    $4,
-    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($5::text, '')), 4326),
+    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($4::text, '')), 4326),
+    $5,
     $6,
     $7,
-    $8,
     COALESCE(
-        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($5::text, '')), 4326)),
-        CASE WHEN ST_MakePoint($7, $6) IS NOT NULL
-             THEN ST_SetSRID(ST_MakePoint($7, $6), 4326)
+        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($4::text, '')), 4326)),
+        CASE WHEN ST_MakePoint($6, $5) IS NOT NULL
+             THEN ST_SetSRID(ST_MakePoint($6, $5), 4326)
         END
     ),
-    $9
+    $8
 )
-RETURNING id, name, description, disaster_id, location,
+RETURNING id, ref_id, description, disaster_id, location,
           COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
           latitude, longitude, severity, verification_status, report_count;
 
@@ -47,7 +45,7 @@ WHERE id = $1
 RETURNING report_count;
 
 -- name: ListAffectedAreas :many
-SELECT id, name, description, disaster_id, location,
+SELECT id, ref_id, description, disaster_id, location,
        COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
        latitude, longitude, severity, verification_status, report_count,
        COUNT(*) OVER() AS total_count
@@ -55,9 +53,9 @@ FROM affected_areas
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
--- name: GetAffectedArea :one
-SELECT id, name, description, disaster_id, location,
+-- name: GetAffectedAreaByRefID :one
+SELECT id, ref_id, description, disaster_id, location,
        COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
        latitude, longitude, severity, verification_status, report_count
 FROM affected_areas
-WHERE id = $1;
+WHERE ref_id = $1;

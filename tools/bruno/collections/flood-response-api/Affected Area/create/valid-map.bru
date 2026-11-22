@@ -20,7 +20,6 @@ post {
 body:json {
   {
     "disaster_id": {{disasterId}},
-    "name": "Majuli island flood belt",
     "location": {
       "source": "map",
       "name": "Majuli",
@@ -51,8 +50,8 @@ tests {
   test("map source with geometry creates an area", function() {
     const data = res.getBody().data;
     const area = data.affected_area;
-    expect(area).to.have.property('id');
-    expect(area).to.have.property('name', 'Majuli island flood belt');
+    expect(area).to.have.property('ref_id');
+    expect(area).to.have.property('location', 'Majuli');
     expect(area).to.have.property('severity', 'critical');
     expect(area).to.have.property('geometry');
     expect(data).to.have.property('is_new_area', true);

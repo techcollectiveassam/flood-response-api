@@ -1,6 +1,10 @@
 package affectedarea
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	StatusReported      = "reported"
@@ -9,7 +13,7 @@ const (
 
 type AffectedArea struct {
 	ID                 int64
-	Name               string
+	RefID              uuid.UUID
 	Description        string
 	DisasterID         int32
 	Location           string
@@ -23,8 +27,8 @@ type AffectedArea struct {
 
 type AffectedAreaReport struct {
 	ID              int64
+	RefID           uuid.UUID
 	AreaID          int64
-	Name            string
 	Description     string
 	LocationPayload []byte
 	Severity        string
