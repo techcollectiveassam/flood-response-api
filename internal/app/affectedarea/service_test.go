@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +15,6 @@ func newTestService(repo *mockRepository) *Service {
 func textRequest() CreateAffectedAreaRequest {
 	return CreateAffectedAreaRequest{
 		DisasterID: 1,
-		Name:       "Possible flooding",
 		Severity:   "medium",
 		Location: &LocationPayload{
 			Source:      SourceText,
@@ -77,8 +77,8 @@ func TestUpdateAreaSeverity(t *testing.T) {
 
 func TestListAffectedAreas(t *testing.T) {
 	areas := []*AffectedArea{
-		{ID: 2, Name: "Flood Zone B", Severity: "high", VerificationStatus: StatusReported, ReportCount: 1},
-		{ID: 1, Name: "Flood Zone A", Severity: "medium", VerificationStatus: StatusReported, ReportCount: 5},
+		{ID: 2, Severity: "high", VerificationStatus: StatusReported, ReportCount: 1},
+		{ID: 1, Severity: "medium", VerificationStatus: StatusReported, ReportCount: 5},
 	}
 
 	repo := &mockRepository{listAreas: areas, listTotal: 42}
@@ -104,11 +104,12 @@ func TestListAffectedAreasError(t *testing.T) {
 }
 
 func TestGetAffectedArea(t *testing.T) {
-	area := &AffectedArea{ID: 1, Name: "Flood Zone A", Severity: "high", VerificationStatus: StatusReported, ReportCount: 3}
+	refID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
+	area := &AffectedArea{ID: 1, RefID: refID, Severity: "high", VerificationStatus: StatusReported, ReportCount: 3}
 	repo := &mockRepository{getAffected: area}
 	svc := newTestService(repo)
 
-	result, err := svc.GetAffectedArea(context.Background(), 1)
+	result, err := svc.GetAffectedAreaByRefID(context.Background(), refID)
 
 	assert.NoError(t, err)
 	assert.Equal(t, area, result)
@@ -117,7 +118,7 @@ func TestGetAffectedArea(t *testing.T) {
 func TestGetAffectedAreaNotFound(t *testing.T) {
 	svc := newTestService(&mockRepository{})
 
-	result, err := svc.GetAffectedArea(context.Background(), 999)
+	result, err := svc.GetAffectedAreaByRefID(context.Background(), uuid.MustParse("99999999-9999-9999-9999-999999999999"))
 
 	assert.ErrorIs(t, err, ErrAffectedAreaNotFound)
 	assert.Nil(t, result)
@@ -127,7 +128,7 @@ func TestGetAffectedAreaError(t *testing.T) {
 	repo := &mockRepository{getErr: assert.AnError}
 	svc := newTestService(repo)
 
-	result, err := svc.GetAffectedArea(context.Background(), 1)
+	result, err := svc.GetAffectedAreaByRefID(context.Background(), uuid.MustParse("55555555-5555-5555-5555-555555555555"))
 
 	assert.Error(t, err)
 	assert.Nil(t, result)

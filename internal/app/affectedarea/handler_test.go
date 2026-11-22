@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
@@ -22,7 +23,7 @@ func setupRouter(handler *Handler, params pagination.Params) *gin.Engine {
 	router := gin.New()
 	router.POST("/affected-areas", handler.CreateAffectedArea)
 	router.GET("/affected-areas", pagination.Middleware(params), handler.ListAffectedAreas)
-	router.GET("/affected-areas/:id", handler.GetAffectedArea)
+	router.GET("/affected-areas/:ref_id", handler.GetAffectedArea)
 	return router
 }
 
@@ -63,7 +64,6 @@ func TestCreateAffectedAreaValidationDetails(t *testing.T) {
 	assert.Equal(t, "validation error", resp.Error.Message)
 	assert.Equal(t, []apperror.Detail{
 		{Field: "disaster_id", Message: "disaster_id is required"},
-		{Field: "name", Message: "name is required"},
 		{Field: "location", Message: "location is required"},
 		{Field: "severity", Message: "severity is required"},
 	}, resp.Error.Details)
@@ -72,9 +72,10 @@ func TestCreateAffectedAreaValidationDetails(t *testing.T) {
 func TestToAffectedAreaResponse(t *testing.T) {
 	latitude := 26.1445
 	longitude := 91.7362
+	refID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	area := &AffectedArea{
 		ID:                 1,
-		Name:               "Flood Zone A",
+		RefID:              refID,
 		Description:        "Severe flooding",
 		DisasterID:         4,
 		Location:           "Beltola, Guwahati",
@@ -87,8 +88,7 @@ func TestToAffectedAreaResponse(t *testing.T) {
 
 	resp := toAffectedAreaResponse(area)
 
-	assert.Equal(t, area.ID, resp.ID)
-	assert.Equal(t, area.Name, resp.Name)
+	assert.Equal(t, area.RefID.String(), resp.RefID)
 	assert.Equal(t, area.Description, resp.Description)
 	assert.Equal(t, area.DisasterID, resp.DisasterID)
 	assert.Equal(t, area.Location, resp.Location)
@@ -126,7 +126,7 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 		{
 			name: "missing required fields",
 			body: map[string]string{
-				"name": "Flood Zone A",
+				"description": "missing required fields",
 			},
 			repo:       &mockRepository{},
 			wantStatus: http.StatusBadRequest,
@@ -136,7 +136,6 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 		{
 			name: "invalid severity",
 			body: CreateAffectedAreaRequest{
-				Name:       "Flood Zone B",
 				DisasterID: 1,
 				Severity:   "urgent",
 			},
@@ -148,7 +147,6 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 		{
 			name: "invalid gps location",
 			body: CreateAffectedAreaRequest{
-				Name:       "Flood Zone C",
 				DisasterID: 1,
 				Severity:   "medium",
 				Location: &LocationPayload{
@@ -229,14 +227,8 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 				var resp struct {
 					Data struct {
 						AffectedArea struct {
-							ID   int64  `json:"id"`
-							Name string `json:"name"`
+							RefID string `json:"ref_id"`
 						} `json:"affected_area"`
-						Report struct {
-							ID     int64  `json:"id"`
-							AreaID int64  `json:"area_id"`
-							Name   string `json:"name"`
-						} `json:"report"`
 						IsNewArea   bool    `json:"is_new_area"`
 						Confidence  float64 `json:"confidence"`
 						MatchReason string  `json:"match_reason"`
@@ -244,10 +236,7 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 				}
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, int64(1), resp.Data.AffectedArea.ID)
-				assert.Equal(t, "Possible flooding", resp.Data.AffectedArea.Name)
-				assert.Equal(t, int64(1), resp.Data.Report.ID)
-				assert.Equal(t, int64(1), resp.Data.Report.AreaID)
+				assert.NotEmpty(t, resp.Data.AffectedArea.RefID)
 				assert.True(t, resp.Data.IsNewArea)
 				assert.Equal(t, MatchReasonUnmatchable, resp.Data.MatchReason)
 			}
@@ -256,9 +245,10 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 }
 
 func TestListAffectedAreasHandler(t *testing.T) {
+	refID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	area := &AffectedArea{
 		ID:                 1,
-		Name:               "Flood Zone A",
+		RefID:              refID,
 		Description:        "Severe flooding",
 		DisasterID:         4,
 		Location:           "Beltola, Guwahati",
@@ -353,8 +343,7 @@ func TestListAffectedAreasHandler(t *testing.T) {
 
 			var resp struct {
 				Data []struct {
-					ID   int64  `json:"id"`
-					Name string `json:"name"`
+					RefID string `json:"ref_id"`
 				} `json:"data"`
 				Pagination struct {
 					Page       int   `json:"page"`
@@ -367,8 +356,7 @@ func TestListAffectedAreasHandler(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Len(t, resp.Data, tt.wantItemCount)
 			if tt.wantItemCount > 0 {
-				assert.Equal(t, int64(1), resp.Data[0].ID)
-				assert.Equal(t, "Flood Zone A", resp.Data[0].Name)
+				assert.Equal(t, refID.String(), resp.Data[0].RefID)
 			}
 			assert.Equal(t, tt.wantPage, resp.Pagination.Page)
 			assert.Equal(t, tt.wantLimit, resp.Pagination.Limit)
@@ -379,9 +367,10 @@ func TestListAffectedAreasHandler(t *testing.T) {
 }
 
 func TestGetAffectedAreaHandler(t *testing.T) {
+	refID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
 	area := &AffectedArea{
 		ID:                 1,
-		Name:               "Flood Zone A",
+		RefID:              refID,
 		Description:        "Severe flooding",
 		DisasterID:         4,
 		Location:           "Beltola, Guwahati",
@@ -400,14 +389,14 @@ func TestGetAffectedAreaHandler(t *testing.T) {
 	}{
 		{
 			name:       "success",
-			path:       "/affected-areas/1",
+			path:       "/affected-areas/" + refID.String(),
 			repo:       &mockRepository{getAffected: area},
 			wantStatus: http.StatusOK,
 			wantErr:    false,
 		},
 		{
 			name:       "not found",
-			path:       "/affected-areas/999",
+			path:       "/affected-areas/99999999-9999-9999-9999-999999999999",
 			repo:       &mockRepository{},
 			wantStatus: http.StatusNotFound,
 			wantCode:   "affected_area_not_found",
@@ -423,7 +412,7 @@ func TestGetAffectedAreaHandler(t *testing.T) {
 		},
 		{
 			name:       "service error",
-			path:       "/affected-areas/1",
+			path:       "/affected-areas/" + refID.String(),
 			repo:       &mockRepository{getErr: assert.AnError},
 			wantStatus: http.StatusInternalServerError,
 			wantCode:   "internal_error",
@@ -462,8 +451,7 @@ func TestGetAffectedAreaHandler(t *testing.T) {
 
 			var resp struct {
 				Data struct {
-					ID                 int64  `json:"id"`
-					Name               string `json:"name"`
+					RefID              string `json:"ref_id"`
 					DisasterID         int32  `json:"disaster_id"`
 					Severity           string `json:"severity"`
 					VerificationStatus string `json:"verification_status"`
@@ -472,8 +460,7 @@ func TestGetAffectedAreaHandler(t *testing.T) {
 			}
 			err := json.Unmarshal(w.Body.Bytes(), &resp)
 			assert.NoError(t, err)
-			assert.Equal(t, int64(1), resp.Data.ID)
-			assert.Equal(t, "Flood Zone A", resp.Data.Name)
+			assert.Equal(t, refID.String(), resp.Data.RefID)
 			assert.Equal(t, int32(4), resp.Data.DisasterID)
 			assert.Equal(t, "high", resp.Data.Severity)
 			assert.Equal(t, StatusReported, resp.Data.VerificationStatus)

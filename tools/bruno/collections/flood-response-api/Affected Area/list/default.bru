@@ -22,8 +22,7 @@ tests {
     const data = res.getBody().data;
     expect(data).to.be.an('array');
     data.forEach(function(area) {
-      expect(area).to.have.property('id');
-      expect(area).to.have.property('name');
+      expect(area).to.have.property('ref_id');
       expect(area).to.have.property('disaster_id');
       expect(area).to.have.property('severity');
       expect(area).to.have.property('verification_status');
@@ -45,10 +44,4 @@ tests {
     expect(body.data.length).to.be.at.most(body.pagination.limit);
   });
 
-  test("captures the first affected area id", function() {
-    const data = res.getBody().data;
-    if (data.length > 0) {
-      bru.setEnvVar("affectedAreaId", data[0].id);
-    }
-  });
 }

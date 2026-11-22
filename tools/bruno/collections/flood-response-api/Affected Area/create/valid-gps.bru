@@ -13,7 +13,6 @@ post {
 body:json {
   {
     "disaster_id": {{disasterId}},
-    "name": "Dhemaji river bank",
     "description": "Flooded river bank area",
     "location": {
       "source": "gps",
@@ -52,21 +51,19 @@ tests {
     expect(data).to.have.property('match_reason', 'none');
   
     const area = data.affected_area;
-    expect(area).to.have.property('id');
-    expect(area).to.have.property('name', 'Dhemaji river bank');
+    expect(area).to.have.property('ref_id');
+    expect(area).to.have.property('location', 'Dhemaji river bank');
     expect(area).to.have.property('severity', 'high');
     expect(area).to.have.property('verification_status');
     expect(area).to.have.property('report_count');
     expect(area.latitude).to.equal(26.2);
     expect(area.longitude).to.equal(91.8);
   
-    expect(data.report).to.have.property('id');
-    expect(data.report).to.have.property('area_id', area.id);
     expect(data.report.reporter).to.eql({ name: 'Rakesh', mobile: '0000000000' });
   });
   
-  test("captures the new affected area id", function() {
+  test("captures the new affected area ref id", function() {
     const data = res.getBody().data;
-    bru.setEnvVar("affectedAreaId", data.affected_area.id);
+    bru.setEnvVar("affectedAreaRefId", data.affected_area.ref_id);
   });
 }

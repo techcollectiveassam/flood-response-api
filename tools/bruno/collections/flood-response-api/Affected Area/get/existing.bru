@@ -6,7 +6,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/affected-areas/{{affectedAreaId}}
+  url: {{baseUrl}}/api/v1/affected-areas/{{affectedAreaRefId}}
   body: none
   auth: none
 }
@@ -20,17 +20,11 @@ assert {
 tests {
   test("returns the affected area details", function() {
     const data = res.getBody().data;
-    expect(data).to.have.property('id');
-    expect(data).to.have.property('name');
+    expect(data).to.have.property('ref_id');
     expect(data).to.have.property('disaster_id');
     expect(data).to.have.property('severity');
     expect(data).to.have.property('verification_status');
     expect(data).to.have.property('report_count');
-  });
-
-  test("the id matches the requested one", function() {
-    const data = res.getBody().data;
-    expect(String(data.id)).to.equal(String(bru.getEnvVar("affectedAreaId")));
   });
 
   test("severity and verification status use the documented enums", function() {

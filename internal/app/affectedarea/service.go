@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 )
@@ -31,7 +32,6 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 	logger := logging.FromContext(ctx)
 	logger.Debug("create affected area request",
 		"disaster_id", req.DisasterID,
-		"name", req.Name,
 		"severity", req.Severity,
 	)
 
@@ -66,7 +66,6 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 
 		report = &AffectedAreaReport{
 			AreaID:          area.ID,
-			Name:            req.Name,
 			Description:     req.Description,
 			LocationPayload: locationPayloadJSON(*req.Location),
 			Severity:        req.Severity,
@@ -133,7 +132,6 @@ func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, 
 	}
 
 	area := &AffectedArea{
-		Name:               req.Name,
 		Description:        req.Description,
 		DisasterID:         req.DisasterID,
 		Location:           locationLabel(*req.Location),
@@ -177,19 +175,19 @@ func (s *Service) ListAffectedAreas(ctx context.Context, page, limit int) (*List
 	return &ListAffectedAreasResult{Areas: areas, Total: total}, nil
 }
 
-func (s *Service) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
+func (s *Service) GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (*AffectedArea, error) {
 	logger := logging.FromContext(ctx)
 
-	area, err := s.repository.GetAffectedArea(ctx, id)
+	area, err := s.repository.GetAffectedAreaByRefID(ctx, refID)
 	if err != nil {
 		if errors.Is(err, ErrAffectedAreaNotFound) {
-			logger.Warn("affected area not found", "id", id)
+			logger.Warn("affected area not found", "ref_id", refID)
 		} else if apperror.HTTPStatus(err) >= 500 {
-			logger.Error("get affected area", "id", id, "error", err)
+			logger.Error("get affected area", "ref_id", refID, "error", err)
 		}
 		return nil, err
 	}
 
-	logger.Debug("affected area found", "id", id)
+	logger.Debug("affected area found", "ref_id", refID)
 	return area, nil
 }

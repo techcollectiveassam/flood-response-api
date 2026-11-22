@@ -19,9 +19,9 @@ assert {
 }
 
 tests {
-  test("non-numeric id is rejected", function() {
+  test("invalid ref_id is rejected", function() {
     const err = res.getBody().error;
     expect(err).to.have.property('code', 'invalid_id');
-    expect(err).to.have.property('message', 'affected area id must be a number');
+    expect(err).to.have.property('message', 'affected area ref_id must be a valid UUID');
   });
 }

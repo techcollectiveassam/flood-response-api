@@ -1,6 +1,10 @@
 package affectedarea
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type mockRepository struct {
 	createAreaErr     error
@@ -74,7 +78,7 @@ func (m *mockRepository) ListAffectedAreas(ctx context.Context, page, limit int)
 	return m.listAreas, m.listTotal, nil
 }
 
-func (m *mockRepository) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
+func (m *mockRepository) GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (*AffectedArea, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}

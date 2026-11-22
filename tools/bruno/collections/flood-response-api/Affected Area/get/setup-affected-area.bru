@@ -19,7 +19,6 @@ post {
 body:json {
   {
     "disaster_id": {{disasterId}},
-    "name": "Guwahati riverine settlement",
     "description": "Low lying settlement along the Brahmaputra",
     "location": {
       "source": "gps",
@@ -40,7 +39,7 @@ assert {
 tests {
   test("captures an affected area for the get requests", function() {
     const data = res.getBody().data;
-    expect(data.affected_area).to.have.property('id');
-    bru.setEnvVar("affectedAreaId", data.affected_area.id);
+    expect(data.affected_area).to.have.property('ref_id');
+    bru.setEnvVar("affectedAreaRefId", data.affected_area.ref_id);
   });
 }

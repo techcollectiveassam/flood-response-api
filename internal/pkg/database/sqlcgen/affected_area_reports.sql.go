@@ -12,20 +12,18 @@ import (
 const createAffectedAreaReport = `-- name: CreateAffectedAreaReport :one
 INSERT INTO affected_area_reports (
     area_id,
-    name,
     description,
     location_payload,
     severity,
     reporter_name,
     reporter_mobile
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, area_id, name, description, location_payload, severity, reporter_name, reporter_mobile, created_at
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, area_id, description, location_payload, severity, reporter_name, reporter_mobile, created_at
 `
 
 type CreateAffectedAreaReportParams struct {
 	AreaID          int64                `json:"area_id"`
-	Name            string               `json:"name"`
 	Description     *string              `json:"description"`
 	LocationPayload []byte               `json:"location_payload"`
 	Severity        AffectedAreaSeverity `json:"severity"`
@@ -36,7 +34,6 @@ type CreateAffectedAreaReportParams struct {
 func (q *Queries) CreateAffectedAreaReport(ctx context.Context, arg CreateAffectedAreaReportParams) (AffectedAreaReport, error) {
 	row := q.db.QueryRow(ctx, createAffectedAreaReport,
 		arg.AreaID,
-		arg.Name,
 		arg.Description,
 		arg.LocationPayload,
 		arg.Severity,
@@ -47,7 +44,6 @@ func (q *Queries) CreateAffectedAreaReport(ctx context.Context, arg CreateAffect
 	err := row.Scan(
 		&i.ID,
 		&i.AreaID,
-		&i.Name,
 		&i.Description,
 		&i.LocationPayload,
 		&i.Severity,
@@ -59,7 +55,7 @@ func (q *Queries) CreateAffectedAreaReport(ctx context.Context, arg CreateAffect
 }
 
 const getAffectedAreaReportByID = `-- name: GetAffectedAreaReportByID :one
-SELECT id, area_id, name, description, location_payload, severity, reporter_name, reporter_mobile, created_at
+SELECT id, area_id, description, location_payload, severity, reporter_name, reporter_mobile, created_at
 FROM affected_area_reports
 WHERE id = $1
 `
@@ -70,7 +66,6 @@ func (q *Queries) GetAffectedAreaReportByID(ctx context.Context, id int64) (Affe
 	err := row.Scan(
 		&i.ID,
 		&i.AreaID,
-		&i.Name,
 		&i.Description,
 		&i.LocationPayload,
 		&i.Severity,

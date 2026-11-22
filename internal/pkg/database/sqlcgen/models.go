@@ -277,7 +277,6 @@ func (ns NullSosStatus) Value() (driver.Value, error) {
 
 type AffectedArea struct {
 	ID                 int64                          `json:"id"`
-	Name               string                         `json:"name"`
 	Description        *string                        `json:"description"`
 	DisasterID         int32                          `json:"disaster_id"`
 	Location           *string                        `json:"location"`
@@ -291,12 +290,12 @@ type AffectedArea struct {
 	UpdatedAt          time.Time                      `json:"updated_at"`
 	Centroid           interface{}                    `json:"centroid"`
 	ReportCount        int32                          `json:"report_count"`
+	RefID              uuid.UUID                      `json:"ref_id"`
 }
 
 type AffectedAreaReport struct {
 	ID              int64                `json:"id"`
 	AreaID          int64                `json:"area_id"`
-	Name            string               `json:"name"`
 	Description     *string              `json:"description"`
 	LocationPayload []byte               `json:"location_payload"`
 	Severity        AffectedAreaSeverity `json:"severity"`
