@@ -1,0 +1,6 @@
+-- +goose Up
+ALTER TYPE affected_area_severity ADD VALUE 'unknown';
+
+-- +goose Down
+-- PostgreSQL does not support removing enum values.
+SELECT 'down SQL query';

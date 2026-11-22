@@ -67,6 +67,8 @@ func TestUpdateAreaSeverity(t *testing.T) {
 		{name: "higher", candidate: "critical", current: "medium", want: true},
 		{name: "equal", candidate: "medium", current: "medium", want: false},
 		{name: "lower", candidate: "low", current: "high", want: false},
+		{name: "low beats unknown", candidate: "low", current: "unknown", want: true},
+		{name: "unknown does not beat low", candidate: "unknown", current: "low", want: false},
 	}
 
 	for _, tt := range tests {

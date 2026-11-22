@@ -10,6 +10,7 @@ import (
 )
 
 var severityRank = map[string]int{
+	"unknown":  0,
 	"low":      1,
 	"medium":   2,
 	"high":     3,

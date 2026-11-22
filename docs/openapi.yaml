@@ -629,7 +629,7 @@ components:
             - type: "null"
     Severity:
       type: string
-      enum: [low, medium, high, critical]
+      enum: [unknown, low, medium, high, critical]
     VerificationStatus:
       type: string
       enum: [reported, investigating, verified, disputed, resolved]

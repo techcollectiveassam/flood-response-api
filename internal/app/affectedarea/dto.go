@@ -54,7 +54,7 @@ type CreateAffectedAreaRequest struct {
 	DisasterID  int32            `json:"disaster_id" binding:"required"`
 	Description string           `json:"description"`
 	Location    *LocationPayload `json:"location" binding:"required"`
-	Severity    string           `json:"severity" binding:"required,oneof=low medium high critical"`
+	Severity    string           `json:"severity" binding:"required,oneof=low medium high critical unknown"`
 	Reporter    *Reporter        `json:"reporter"`
 }
 

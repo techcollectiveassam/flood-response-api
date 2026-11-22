@@ -116,6 +116,20 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 			wantErr:    false,
 		},
 		{
+			name: "unknown severity",
+			body: CreateAffectedAreaRequest{
+				DisasterID: 1,
+				Severity:   "unknown",
+				Location: &LocationPayload{
+					Source:      SourceText,
+					Description: "Village near the old bridge",
+				},
+			},
+			repo:       &mockRepository{},
+			wantStatus: http.StatusCreated,
+			wantErr:    false,
+		},
+		{
 			name:       "invalid json",
 			body:       "invalid",
 			repo:       &mockRepository{},

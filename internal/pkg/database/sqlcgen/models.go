@@ -20,6 +20,7 @@ const (
 	AffectedAreaSeverityMedium   AffectedAreaSeverity = "medium"
 	AffectedAreaSeverityHigh     AffectedAreaSeverity = "high"
 	AffectedAreaSeverityCritical AffectedAreaSeverity = "critical"
+	AffectedAreaSeverityUnknown  AffectedAreaSeverity = "unknown"
 )
 
 func (e *AffectedAreaSeverity) Scan(src interface{}) error {
