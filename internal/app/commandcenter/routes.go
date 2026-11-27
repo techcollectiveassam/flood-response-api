@@ -6,5 +6,5 @@ import (
 
 func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/command-centers", m.handler.CreateCommandCenter)
-	rg.GET("/disasters/:id/command-center", m.handler.GetCommandCenterByDisaster)
+	rg.GET("/disasters/:ref_id/command-center", m.handler.GetCommandCenterByDisaster)
 }

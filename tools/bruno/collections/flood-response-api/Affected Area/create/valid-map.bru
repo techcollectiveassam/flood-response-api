@@ -4,13 +4,6 @@ meta {
   seq: 3
 }
 
-script:pre-request {
-  const disasterId = bru.getEnvVar("disasterId");
-  if (!disasterId) {
-    bru.setEnvVar("disasterId", 1);
-  }
-}
-
 post {
   url: {{baseUrl}}/api/v1/affected-areas
   body: json
@@ -19,8 +12,7 @@ post {
 
 body:json {
   {
-    "disaster_id": {{disasterId}},
-    "name": "Majuli island flood belt",
+    "disaster_ref_id": "{{disasterRefId}}",
     "location": {
       "source": "map",
       "name": "Majuli",
@@ -51,8 +43,8 @@ tests {
   test("map source with geometry creates an area", function() {
     const data = res.getBody().data;
     const area = data.affected_area;
-    expect(area).to.have.property('id');
-    expect(area).to.have.property('name', 'Majuli island flood belt');
+    expect(area).to.have.property('ref_id');
+    expect(area).to.have.property('location', 'Majuli');
     expect(area).to.have.property('severity', 'critical');
     expect(area).to.have.property('geometry');
     expect(data).to.have.property('is_new_area', true);

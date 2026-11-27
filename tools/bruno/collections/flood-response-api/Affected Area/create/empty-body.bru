@@ -25,8 +25,7 @@ tests {
   test("empty body fails on required fields", function() {
     const err = res.getBody().error;
     const fields = err.details.map(d => d.field);
-    expect(fields).to.include('name');
-    expect(fields).to.include('disaster_id');
+    expect(fields).to.include('disaster_ref_id');
     expect(fields).to.include('location');
     expect(fields).to.include('severity');
   });

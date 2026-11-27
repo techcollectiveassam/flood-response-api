@@ -3,9 +3,14 @@ package disaster
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
-var mockStartsAt = time.Date(2026, 9, 6, 7, 0, 0, 0, time.UTC)
+var (
+	mockStartsAt = time.Date(2026, 9, 6, 7, 0, 0, 0, time.UTC)
+	mockRefID    = uuid.MustParse("11111111-1111-1111-1111-111111111111")
+)
 
 type mockRepository struct {
 	createErr   error
@@ -21,6 +26,7 @@ func (m *mockRepository) Create(ctx context.Context, d *Disaster) error {
 		return m.createErr
 	}
 	d.ID = 1
+	d.RefID = mockRefID
 	d.Status = "active"
 	if d.StartsAt == nil {
 		t := mockStartsAt
@@ -36,7 +42,7 @@ func (m *mockRepository) List(ctx context.Context) ([]Disaster, error) {
 	return m.list, nil
 }
 
-func (m *mockRepository) GetByID(ctx context.Context, id int32) (*Disaster, error) {
+func (m *mockRepository) GetByRefID(ctx context.Context, refID uuid.UUID) (*Disaster, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}

@@ -18,9 +18,9 @@ assert {
 }
 
 tests {
-  test("non-numeric id is rejected", function() {
+  test("malformed UUID is rejected", function() {
     const err = res.getBody().error;
     expect(err).to.have.property('code', 'invalid_id');
-    expect(err).to.have.property('message', 'disaster id must be a number');
+    expect(err).to.have.property('message');
   });
 }

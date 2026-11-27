@@ -4,12 +4,6 @@ meta {
   seq: 2
 }
 
-script:pre-request {
-  if (!bru.getEnvVar("disasterId")) {
-    bru.setEnvVar("disasterId", 1);
-  }
-}
-
 post {
   url: {{baseUrl}}/api/v1/affected-areas
   body: json
@@ -18,8 +12,7 @@ post {
 
 body:json {
   {
-    "disaster_id": {{disasterId}},
-    "name": "Guwahati riverine settlement",
+    "disaster_ref_id": "{{disasterRefId}}",
     "description": "Low lying settlement along the Brahmaputra",
     "location": {
       "source": "gps",
@@ -40,7 +33,7 @@ assert {
 tests {
   test("captures an affected area for the get requests", function() {
     const data = res.getBody().data;
-    expect(data.affected_area).to.have.property('id');
-    bru.setEnvVar("affectedAreaId", data.affected_area.id);
+    expect(data.affected_area).to.have.property('ref_id');
+    bru.setEnvVar("affectedAreaRefId", data.affected_area.ref_id);
   });
 }

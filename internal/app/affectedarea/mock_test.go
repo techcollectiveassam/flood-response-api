@@ -1,6 +1,10 @@
 package affectedarea
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type mockRepository struct {
 	createAreaErr     error
@@ -9,6 +13,9 @@ type mockRepository struct {
 	incrementErr      error
 	listErr           error
 	getErr            error
+	resolveErr        error
+
+	disasterID int32
 
 	createdArea   *AffectedArea
 	createdReport *AffectedAreaReport
@@ -21,10 +28,24 @@ type mockRepository struct {
 	increments      []int64
 	listPage        int
 	listLimit       int
+	resolveCalls    int
+	resolvedRefID   uuid.UUID
 }
 
 func (m *mockRepository) WithTx(ctx context.Context, fn func(Repository) error) error {
 	return fn(m)
+}
+
+func (m *mockRepository) GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error) {
+	m.resolveCalls++
+	m.resolvedRefID = refID
+	if m.resolveErr != nil {
+		return 0, m.resolveErr
+	}
+	if m.disasterID == 0 {
+		return 1, nil
+	}
+	return m.disasterID, nil
 }
 
 func (m *mockRepository) CreateArea(ctx context.Context, area *AffectedArea) error {
@@ -44,6 +65,9 @@ func (m *mockRepository) CreateReport(ctx context.Context, report *AffectedAreaR
 	}
 	if report.ID == 0 {
 		report.ID = 1
+	}
+	if report.RefID == uuid.Nil {
+		report.RefID = uuid.MustParse("66666666-6666-6666-6666-666666666666")
 	}
 	m.createdReport = report
 	return nil
@@ -74,7 +98,7 @@ func (m *mockRepository) ListAffectedAreas(ctx context.Context, page, limit int)
 	return m.listAreas, m.listTotal, nil
 }
 
-func (m *mockRepository) GetAffectedArea(ctx context.Context, id int64) (*AffectedArea, error) {
+func (m *mockRepository) GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (*AffectedArea, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}

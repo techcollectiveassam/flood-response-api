@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
+var uuidZero = uuid.UUID{}
+
 func TestCommandCenterResponseOmitsEmptyOptionalFields(t *testing.T) {
 	c := &CommandCenter{
-		ID:   1,
-		Name: "Minimal Center",
-		Type: TypeOther,
+		ID:            1,
+		DisasterRefID: uuidZero,
+		Name:          "Minimal Center",
+		Type:          TypeOther,
 	}
 
 	resp := toCommandCenterResponse(c)
@@ -24,6 +28,7 @@ func TestCommandCenterResponseOmitsEmptyOptionalFields(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, float64(1), decoded["id"])
+	assert.Equal(t, uuidZero.String(), decoded["disaster_ref_id"])
 	assert.Equal(t, "Minimal Center", decoded["name"])
 	assert.Equal(t, "other", decoded["type"])
 	assert.NotContains(t, decoded, "description")

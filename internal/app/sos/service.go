@@ -10,10 +10,11 @@ import (
 )
 
 var (
-	ErrInvalidSOS        = apperror.BadRequest("invalid_sos", "either reporter_mobile or location is required")
-	ErrInvalidLocation   = apperror.BadRequest("invalid_location", "latitude and longitude must be provided together")
-	ErrInvalidCoordinate = apperror.BadRequest("invalid_location", "latitude must be within -90..90 and longitude within -180..180")
-	ErrSOSNotFound       = apperror.NotFound("sos_not_found", "no sos request found for the given tracking id")
+	ErrInvalidSOS         = apperror.BadRequest("invalid_sos", "either reporter_mobile or location is required")
+	ErrInvalidLocation    = apperror.BadRequest("invalid_location", "latitude and longitude must be provided together")
+	ErrInvalidCoordinate  = apperror.BadRequest("invalid_location", "latitude must be within -90..90 and longitude within -180..180")
+	ErrInvalidDisasterRef = apperror.BadRequest("invalid_request_body", "disaster_ref_id must be a valid UUID")
+	ErrSOSNotFound        = apperror.NotFound("sos_not_found", "no sos request found for the given tracking id")
 )
 
 type Service struct {
@@ -33,7 +34,7 @@ func NewService(repository Repository, duplicateRadiusMeters float64) *Service {
 func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bool, error) {
 	logger := logging.FromContext(ctx)
 	logger.Debug("create sos request",
-		"disaster_id", req.DisasterID,
+		"disaster_ref_id", req.DisasterRefID,
 		"reporter_mobile", req.ReporterMobile,
 	)
 
@@ -41,8 +42,21 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bo
 		return nil, false, err
 	}
 
+	refID, err := uuid.Parse(req.DisasterRefID)
+	if err != nil {
+		return nil, false, ErrInvalidDisasterRef
+	}
+
+	disasterID, err := s.repository.GetDisasterIDByRefID(ctx, refID)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("resolve disaster for sos", "error", err)
+		}
+		return nil, false, err
+	}
+
 	geometry := pointGeoJSON(locationLongitude(req.Location), locationLatitude(req.Location))
-	matched, err := s.repository.FindDuplicate(ctx, req.DisasterID, req.ReporterMobile, geometry, s.duplicateRadiusMeters)
+	matched, err := s.repository.FindDuplicate(ctx, disasterID, req.ReporterMobile, geometry, s.duplicateRadiusMeters)
 	if err != nil {
 		if apperror.HTTPStatus(err) >= 500 {
 			logger.Error("find duplicate sos", "error", err)
@@ -64,7 +78,7 @@ func (s *Service) CreateSOS(ctx context.Context, req CreateSOSRequest) (*SOS, bo
 	}
 
 	sosRequest := &SOS{
-		DisasterID:     req.DisasterID,
+		DisasterID:     disasterID,
 		Latitude:       locationLatitude(req.Location),
 		Longitude:      locationLongitude(req.Location),
 		ReporterMobile: req.ReporterMobile,

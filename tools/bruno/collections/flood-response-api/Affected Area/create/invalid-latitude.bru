@@ -4,13 +4,6 @@ meta {
   seq: 15
 }
 
-script:pre-request {
-  const disasterId = bru.getEnvVar("disasterId");
-  if (!disasterId) {
-    bru.setEnvVar("disasterId", 1);
-  }
-}
-
 post {
   url: {{baseUrl}}/api/v1/affected-areas
   body: json
@@ -19,8 +12,7 @@ post {
 
 body:json {
   {
-    "disaster_id": {{disasterId}},
-    "name": "Dhemaji river bank",
+    "disaster_ref_id": "{{disasterRefId}}",
     "location": {
       "source": "gps",
       "latitude": "abc",

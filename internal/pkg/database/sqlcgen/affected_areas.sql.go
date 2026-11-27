@@ -7,11 +7,12 @@ package sqlcgen
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createAffectedArea = `-- name: CreateAffectedArea :one
 INSERT INTO affected_areas (
-    name,
     description,
     disaster_id,
     location,
@@ -26,30 +27,28 @@ VALUES (
     $1,
     $2,
     $3,
-    $4,
-    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($5::text, '')), 4326),
+    ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($4::text, '')), 4326),
+    $5,
     $6,
     $7,
-    $8,
     COALESCE(
-        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($5::text, '')), 4326)),
-        CASE WHEN ST_MakePoint($7, $6) IS NOT NULL
-             THEN ST_SetSRID(ST_MakePoint($7, $6), 4326)
+        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(NULLIF($4::text, '')), 4326)),
+        CASE WHEN ST_MakePoint($6, $5) IS NOT NULL
+             THEN ST_SetSRID(ST_MakePoint($6, $5), 4326)
         END
     ),
-    $9
+    $8
 )
-RETURNING id, name, description, disaster_id, location,
+RETURNING id, ref_id, description, disaster_id, location,
           COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
           latitude, longitude, severity, verification_status, report_count
 `
 
 type CreateAffectedAreaParams struct {
-	Name               string                         `json:"name"`
 	Description        *string                        `json:"description"`
 	DisasterID         int32                          `json:"disaster_id"`
 	Location           *string                        `json:"location"`
-	Column5            string                         `json:"column_5"`
+	Column4            string                         `json:"column_4"`
 	Latitude           *float64                       `json:"latitude"`
 	Longitude          *float64                       `json:"longitude"`
 	Severity           AffectedAreaSeverity           `json:"severity"`
@@ -58,7 +57,7 @@ type CreateAffectedAreaParams struct {
 
 type CreateAffectedAreaRow struct {
 	ID                 int64                          `json:"id"`
-	Name               string                         `json:"name"`
+	RefID              uuid.UUID                      `json:"ref_id"`
 	Description        *string                        `json:"description"`
 	DisasterID         int32                          `json:"disaster_id"`
 	Location           *string                        `json:"location"`
@@ -72,11 +71,10 @@ type CreateAffectedAreaRow struct {
 
 func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedAreaParams) (CreateAffectedAreaRow, error) {
 	row := q.db.QueryRow(ctx, createAffectedArea,
-		arg.Name,
 		arg.Description,
 		arg.DisasterID,
 		arg.Location,
-		arg.Column5,
+		arg.Column4,
 		arg.Latitude,
 		arg.Longitude,
 		arg.Severity,
@@ -85,7 +83,7 @@ func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedArea
 	var i CreateAffectedAreaRow
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
+		&i.RefID,
 		&i.Description,
 		&i.DisasterID,
 		&i.Location,
@@ -99,19 +97,21 @@ func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedArea
 	return i, err
 }
 
-const getAffectedArea = `-- name: GetAffectedArea :one
-SELECT id, name, description, disaster_id, location,
-       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
-       latitude, longitude, severity, verification_status, report_count
-FROM affected_areas
-WHERE id = $1
+const getAffectedAreaByRefID = `-- name: GetAffectedAreaByRefID :one
+SELECT a.id, a.ref_id, a.description, a.disaster_id, d.ref_id AS disaster_ref_id, a.location,
+       COALESCE(ST_AsGeoJSON(a.geom)::text, '') AS geometry,
+       a.latitude, a.longitude, a.severity, a.verification_status, a.report_count
+FROM affected_areas a
+JOIN disasters d ON d.id = a.disaster_id
+WHERE a.ref_id = $1
 `
 
-type GetAffectedAreaRow struct {
+type GetAffectedAreaByRefIDRow struct {
 	ID                 int64                          `json:"id"`
-	Name               string                         `json:"name"`
+	RefID              uuid.UUID                      `json:"ref_id"`
 	Description        *string                        `json:"description"`
 	DisasterID         int32                          `json:"disaster_id"`
+	DisasterRefID      uuid.UUID                      `json:"disaster_ref_id"`
 	Location           *string                        `json:"location"`
 	Geometry           interface{}                    `json:"geometry"`
 	Latitude           *float64                       `json:"latitude"`
@@ -121,14 +121,15 @@ type GetAffectedAreaRow struct {
 	ReportCount        int32                          `json:"report_count"`
 }
 
-func (q *Queries) GetAffectedArea(ctx context.Context, id int64) (GetAffectedAreaRow, error) {
-	row := q.db.QueryRow(ctx, getAffectedArea, id)
-	var i GetAffectedAreaRow
+func (q *Queries) GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (GetAffectedAreaByRefIDRow, error) {
+	row := q.db.QueryRow(ctx, getAffectedAreaByRefID, refID)
+	var i GetAffectedAreaByRefIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.Name,
+		&i.RefID,
 		&i.Description,
 		&i.DisasterID,
+		&i.DisasterRefID,
 		&i.Location,
 		&i.Geometry,
 		&i.Latitude,
@@ -156,12 +157,13 @@ func (q *Queries) IncrementReportCount(ctx context.Context, id int64) (int32, er
 }
 
 const listAffectedAreas = `-- name: ListAffectedAreas :many
-SELECT id, name, description, disaster_id, location,
-       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
-       latitude, longitude, severity, verification_status, report_count,
+SELECT a.id, a.ref_id, a.description, a.disaster_id, d.ref_id AS disaster_ref_id, a.location,
+       COALESCE(ST_AsGeoJSON(a.geom)::text, '') AS geometry,
+       a.latitude, a.longitude, a.severity, a.verification_status, a.report_count,
        COUNT(*) OVER() AS total_count
-FROM affected_areas
-ORDER BY created_at DESC
+FROM affected_areas a
+JOIN disasters d ON d.id = a.disaster_id
+ORDER BY a.created_at DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -172,9 +174,10 @@ type ListAffectedAreasParams struct {
 
 type ListAffectedAreasRow struct {
 	ID                 int64                          `json:"id"`
-	Name               string                         `json:"name"`
+	RefID              uuid.UUID                      `json:"ref_id"`
 	Description        *string                        `json:"description"`
 	DisasterID         int32                          `json:"disaster_id"`
+	DisasterRefID      uuid.UUID                      `json:"disaster_ref_id"`
 	Location           *string                        `json:"location"`
 	Geometry           interface{}                    `json:"geometry"`
 	Latitude           *float64                       `json:"latitude"`
@@ -196,9 +199,10 @@ func (q *Queries) ListAffectedAreas(ctx context.Context, arg ListAffectedAreasPa
 		var i ListAffectedAreasRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Name,
+			&i.RefID,
 			&i.Description,
 			&i.DisasterID,
+			&i.DisasterRefID,
 			&i.Location,
 			&i.Geometry,
 			&i.Latitude,

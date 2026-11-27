@@ -51,19 +51,17 @@ type Reporter struct {
 }
 
 type CreateAffectedAreaRequest struct {
-	DisasterID  int32            `json:"disaster_id" binding:"required"`
-	Name        string           `json:"name" binding:"required"`
-	Description string           `json:"description"`
-	Location    *LocationPayload `json:"location" binding:"required"`
-	Severity    string           `json:"severity" binding:"required,oneof=low medium high critical"`
-	Reporter    *Reporter        `json:"reporter"`
+	DisasterRefID string           `json:"disaster_ref_id" binding:"required,uuid"`
+	Description   string           `json:"description"`
+	Location      *LocationPayload `json:"location" binding:"required"`
+	Severity      string           `json:"severity" binding:"required,oneof=low medium high critical unknown"`
+	Reporter      *Reporter        `json:"reporter"`
 }
 
 type AffectedAreaResponse struct {
-	ID                 int64    `json:"id"`
-	Name               string   `json:"name"`
+	RefID              string   `json:"ref_id"`
 	Description        string   `json:"description,omitempty"`
-	DisasterID         int32    `json:"disaster_id"`
+	DisasterRefID      string   `json:"disaster_ref_id"`
 	Location           string   `json:"location,omitempty"`
 	Geometry           string   `json:"geometry,omitempty"`
 	Latitude           *float64 `json:"latitude,omitempty"`
@@ -74,9 +72,7 @@ type AffectedAreaResponse struct {
 }
 
 type AffectedAreaReportResponse struct {
-	ID        int64           `json:"id"`
-	AreaID    int64           `json:"area_id"`
-	Name      string          `json:"name"`
+	RefID     string          `json:"ref_id"`
 	Severity  string          `json:"severity"`
 	Location  json.RawMessage `json:"location"`
 	Reporter  *Reporter       `json:"reporter,omitempty"`
@@ -93,10 +89,9 @@ type CreateAffectedAreaResponse struct {
 
 func toAffectedAreaResponse(area *AffectedArea) AffectedAreaResponse {
 	return AffectedAreaResponse{
-		ID:                 area.ID,
-		Name:               area.Name,
+		RefID:              area.RefID.String(),
 		Description:        area.Description,
-		DisasterID:         area.DisasterID,
+		DisasterRefID:      area.DisasterRefID.String(),
 		Location:           area.Location,
 		Geometry:           area.Geometry,
 		Latitude:           area.Latitude,
@@ -109,9 +104,7 @@ func toAffectedAreaResponse(area *AffectedArea) AffectedAreaResponse {
 
 func toAffectedAreaReportResponse(report *AffectedAreaReport) AffectedAreaReportResponse {
 	resp := AffectedAreaReportResponse{
-		ID:        report.ID,
-		AreaID:    report.AreaID,
-		Name:      report.Name,
+		RefID:     report.RefID.String(),
 		Severity:  report.Severity,
 		Location:  report.LocationPayload,
 		CreatedAt: timeutil.FormatUTC(report.CreatedAt),

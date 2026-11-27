@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,7 +18,7 @@ var ErrDisasterNotFound = apperror.NotFound("disaster_not_found", "disaster not 
 type Repository interface {
 	Create(ctx context.Context, d *Disaster) error
 	List(ctx context.Context) ([]Disaster, error)
-	GetByID(ctx context.Context, id int32) (*Disaster, error)
+	GetByRefID(ctx context.Context, refID uuid.UUID) (*Disaster, error)
 }
 
 type PostgresRepository struct {
@@ -44,6 +45,7 @@ func (r *PostgresRepository) Create(ctx context.Context, d *Disaster) error {
 	}
 
 	d.ID = result.ID
+	d.RefID = result.RefID
 	d.Name = result.Name
 	d.Description = database.TextValue(result.Description)
 	d.Type = string(result.Type)
@@ -61,13 +63,13 @@ func (r *PostgresRepository) List(ctx context.Context) ([]Disaster, error) {
 
 	disasters := make([]Disaster, 0, len(rows))
 	for _, row := range rows {
-		disasters = append(disasters, disasterFromRow(row.ID, row.Name, row.Description, row.Type, row.Status, row.StartsAt, row.EndsAt))
+		disasters = append(disasters, disasterFromRow(row.ID, row.RefID, row.Name, row.Description, row.Type, row.Status, row.StartsAt, row.EndsAt))
 	}
 	return disasters, nil
 }
 
-func (r *PostgresRepository) GetByID(ctx context.Context, id int32) (*Disaster, error) {
-	row, err := r.queries.GetDisaster(ctx, id)
+func (r *PostgresRepository) GetByRefID(ctx context.Context, refID uuid.UUID) (*Disaster, error) {
+	row, err := r.queries.GetDisasterByRefID(ctx, refID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrDisasterNotFound
@@ -75,13 +77,14 @@ func (r *PostgresRepository) GetByID(ctx context.Context, id int32) (*Disaster, 
 		return nil, database.TranslateError(err)
 	}
 
-	d := disasterFromRow(row.ID, row.Name, row.Description, row.Type, row.Status, row.StartsAt, row.EndsAt)
+	d := disasterFromRow(row.ID, row.RefID, row.Name, row.Description, row.Type, row.Status, row.StartsAt, row.EndsAt)
 	return &d, nil
 }
 
-func disasterFromRow(id int32, name string, description *string, dtype sqlcgen.DisasterType, status sqlcgen.DisasterStatus, startsAt, endsAt pgtype.Timestamptz) Disaster {
+func disasterFromRow(id int32, refID uuid.UUID, name string, description *string, dtype sqlcgen.DisasterType, status sqlcgen.DisasterStatus, startsAt, endsAt pgtype.Timestamptz) Disaster {
 	return Disaster{
 		ID:          id,
+		RefID:       refID,
 		Name:        name,
 		Description: database.TextValue(description),
 		Type:        string(dtype),

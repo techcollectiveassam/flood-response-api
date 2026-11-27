@@ -5,9 +5,9 @@ meta {
 }
 
 script:pre-request {
-  const disasterId = bru.getEnvVar("disasterId") || 1;
+  const disasterRefId = bru.getEnvVar("disasterRefId");
   if (!bru.getEnvVar("commandCenterDisasterId")) {
-    bru.setEnvVar("commandCenterDisasterId", disasterId);
+    bru.setEnvVar("commandCenterDisasterId", disasterRefId);
   }
 }
 
@@ -19,7 +19,7 @@ post {
 
 body:json {
   {
-    "disaster_id": {{commandCenterDisasterId}},
+    "disaster_ref_id": "{{commandCenterDisasterId}}",
     "name": "Assam Flood Response Cell"
   }
 }
