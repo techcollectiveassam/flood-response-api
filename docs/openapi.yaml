@@ -205,6 +205,8 @@ paths:
                 $ref: "#/components/schemas/CreateAffectedAreaData"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/DisasterNotFound"
         "500":
           $ref: "#/components/responses/InternalError"
     get:
