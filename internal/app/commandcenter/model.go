@@ -1,6 +1,10 @@
 package commandcenter
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const (
 	TypeGovernment = "government"
@@ -11,6 +15,7 @@ const (
 
 type CommandCenter struct {
 	DisasterID    int32
+	DisasterRefID uuid.UUID
 	ID            int32
 	Name          string
 	Type          string

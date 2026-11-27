@@ -5,14 +5,18 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 )
+
+const testDisasterRefID = "11111111-1111-1111-1111-111111111111"
 
 func TestCreateCommandCenter(t *testing.T) {
 	tests := []struct {
 		name     string
 		req      CreateCommandCenterRequest
+		resolve  error
 		repoErr  error
 		wantErr  bool
 		checkErr error
@@ -20,7 +24,7 @@ func TestCreateCommandCenter(t *testing.T) {
 		{
 			name: "success",
 			req: CreateCommandCenterRequest{
-				DisasterID:    1,
+				DisasterRefID: testDisasterRefID,
 				Name:          "Assam State Disaster Management",
 				Type:          TypeGovernment,
 				Description:   "State level coordination",
@@ -34,19 +38,40 @@ func TestCreateCommandCenter(t *testing.T) {
 		{
 			name: "success with only required fields",
 			req: CreateCommandCenterRequest{
-				DisasterID: 2,
-				Name:       "Volunteer Response Group",
-				Type:       TypeGroup,
+				DisasterRefID: "22222222-2222-2222-2222-222222222222",
+				Name:          "Volunteer Response Group",
+				Type:          TypeGroup,
 			},
 			repoErr: nil,
 			wantErr: false,
 		},
 		{
+			name: "invalid disaster ref id",
+			req: CreateCommandCenterRequest{
+				DisasterRefID: "not-a-uuid",
+				Name:          "Invalid Ref",
+				Type:          TypeNGO,
+			},
+			wantErr:  true,
+			checkErr: ErrInvalidDisasterRef,
+		},
+		{
+			name: "unknown disaster",
+			req: CreateCommandCenterRequest{
+				DisasterRefID: "99999999-9999-9999-9999-999999999999",
+				Name:          "Orphan Response",
+				Type:          TypeNGO,
+			},
+			resolve:  ErrDisasterNotFound,
+			wantErr:  true,
+			checkErr: ErrDisasterNotFound,
+		},
+		{
 			name: "repository error",
 			req: CreateCommandCenterRequest{
-				DisasterID: 3,
-				Name:       "Earthquake Response",
-				Type:       TypeNGO,
+				DisasterRefID: "33333333-3333-3333-3333-333333333333",
+				Name:          "Earthquake Response",
+				Type:          TypeNGO,
 			},
 			repoErr:  assert.AnError,
 			wantErr:  true,
@@ -56,10 +81,17 @@ func TestCreateCommandCenter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &mockRepository{createErr: tt.repoErr}
+			repo := &mockRepository{createErr: tt.repoErr, resolveErr: tt.resolve}
 			svc := NewService(repo)
 
 			resp, err := svc.CreateCommandCenter(context.Background(), tt.req)
+
+			if tt.checkErr == ErrInvalidDisasterRef {
+				assert.Equal(t, 0, repo.resolveCalls)
+			} else {
+				assert.Equal(t, 1, repo.resolveCalls)
+				assert.Equal(t, tt.req.DisasterRefID, repo.resolvedRefID.String())
+			}
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -70,7 +102,8 @@ func TestCreateCommandCenter(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, int32(1), resp.ID)
-				assert.Equal(t, tt.req.DisasterID, resp.DisasterID)
+				assert.Equal(t, int32(7), resp.DisasterID)
+				assert.Equal(t, tt.req.DisasterRefID, resp.DisasterRefID.String())
 				assert.Equal(t, tt.req.Name, resp.Name)
 				assert.Equal(t, tt.req.Type, resp.Type)
 				assert.Equal(t, tt.req.Description, resp.Description)
@@ -85,6 +118,7 @@ func TestCreateCommandCenter(t *testing.T) {
 }
 
 func TestGetCommandCenterByDisaster(t *testing.T) {
+	refID := uuid.MustParse(testDisasterRefID)
 	found := &CommandCenter{
 		ID:            7,
 		DisasterID:    2,
@@ -97,55 +131,55 @@ func TestGetCommandCenterByDisaster(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		disasterID   int32
+		refID        uuid.UUID
 		repo         *mockRepository
 		wantErr      bool
 		checkErr     error
-		wantExists   int
+		wantResolve  int
 		wantGetCalls int
 	}{
 		{
 			name:         "success",
-			disasterID:   2,
-			repo:         &mockRepository{get: found, disasterExists: true},
+			refID:        refID,
+			repo:         &mockRepository{get: found},
 			wantErr:      false,
-			wantExists:   1,
+			wantResolve:  1,
 			wantGetCalls: 1,
 		},
 		{
 			name:         "disaster exists but has no command center",
-			disasterID:   4242,
-			repo:         &mockRepository{getErr: ErrCommandCenterNotFound, disasterExists: true},
+			refID:        uuid.MustParse("42424242-4242-4242-4242-424242424242"),
+			repo:         &mockRepository{getErr: ErrCommandCenterNotFound},
 			wantErr:      true,
 			checkErr:     ErrCommandCenterNotFound,
-			wantExists:   1,
+			wantResolve:  1,
 			wantGetCalls: 1,
 		},
 		{
 			name:         "unknown disaster",
-			disasterID:   999999,
-			repo:         &mockRepository{disasterExists: false},
+			refID:        uuid.MustParse("99999999-9999-9999-9999-999999999999"),
+			repo:         &mockRepository{resolveErr: ErrDisasterNotFound},
 			wantErr:      true,
 			checkErr:     ErrDisasterNotFound,
-			wantExists:   1,
+			wantResolve:  1,
 			wantGetCalls: 0,
 		},
 		{
-			name:         "existence check fails",
-			disasterID:   5555,
-			repo:         &mockRepository{disasterExistsErr: assert.AnError},
+			name:         "resolution fails",
+			refID:        uuid.MustParse("55555555-5555-5555-5555-555555555555"),
+			repo:         &mockRepository{resolveErr: assert.AnError},
 			wantErr:      true,
 			checkErr:     assert.AnError,
-			wantExists:   1,
+			wantResolve:  1,
 			wantGetCalls: 0,
 		},
 		{
 			name:         "repository error",
-			disasterID:   3,
-			repo:         &mockRepository{getErr: assert.AnError, disasterExists: true},
+			refID:        uuid.MustParse("33333333-3333-3333-3333-333333333333"),
+			repo:         &mockRepository{getErr: assert.AnError},
 			wantErr:      true,
 			checkErr:     assert.AnError,
-			wantExists:   1,
+			wantResolve:  1,
 			wantGetCalls: 1,
 		},
 	}
@@ -154,10 +188,10 @@ func TestGetCommandCenterByDisaster(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			svc := NewService(tt.repo)
 
-			resp, err := svc.GetCommandCenterByDisaster(context.Background(), tt.disasterID)
+			resp, err := svc.GetCommandCenterByDisaster(context.Background(), tt.refID)
 
-			assert.Equal(t, tt.disasterID, tt.repo.gotDisaster)
-			assert.Equal(t, tt.wantExists, tt.repo.existsCalls)
+			assert.Equal(t, tt.refID, tt.repo.resolvedRefID)
+			assert.Equal(t, tt.wantResolve, tt.repo.resolveCalls)
 			assert.Equal(t, tt.wantGetCalls, tt.repo.getCalls)
 
 			if tt.wantErr {
@@ -169,7 +203,7 @@ func TestGetCommandCenterByDisaster(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, found.ID, resp.ID)
-				assert.Equal(t, found.DisasterID, resp.DisasterID)
+				assert.Equal(t, tt.refID.String(), resp.DisasterRefID.String())
 				assert.Equal(t, found.Name, resp.Name)
 				assert.Equal(t, found.Type, resp.Type)
 			}

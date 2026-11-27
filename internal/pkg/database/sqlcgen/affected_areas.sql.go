@@ -98,11 +98,12 @@ func (q *Queries) CreateAffectedArea(ctx context.Context, arg CreateAffectedArea
 }
 
 const getAffectedAreaByRefID = `-- name: GetAffectedAreaByRefID :one
-SELECT id, ref_id, description, disaster_id, location,
-       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
-       latitude, longitude, severity, verification_status, report_count
-FROM affected_areas
-WHERE ref_id = $1
+SELECT a.id, a.ref_id, a.description, a.disaster_id, d.ref_id AS disaster_ref_id, a.location,
+       COALESCE(ST_AsGeoJSON(a.geom)::text, '') AS geometry,
+       a.latitude, a.longitude, a.severity, a.verification_status, a.report_count
+FROM affected_areas a
+JOIN disasters d ON d.id = a.disaster_id
+WHERE a.ref_id = $1
 `
 
 type GetAffectedAreaByRefIDRow struct {
@@ -110,6 +111,7 @@ type GetAffectedAreaByRefIDRow struct {
 	RefID              uuid.UUID                      `json:"ref_id"`
 	Description        *string                        `json:"description"`
 	DisasterID         int32                          `json:"disaster_id"`
+	DisasterRefID      uuid.UUID                      `json:"disaster_ref_id"`
 	Location           *string                        `json:"location"`
 	Geometry           interface{}                    `json:"geometry"`
 	Latitude           *float64                       `json:"latitude"`
@@ -127,6 +129,7 @@ func (q *Queries) GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (
 		&i.RefID,
 		&i.Description,
 		&i.DisasterID,
+		&i.DisasterRefID,
 		&i.Location,
 		&i.Geometry,
 		&i.Latitude,
@@ -154,12 +157,13 @@ func (q *Queries) IncrementReportCount(ctx context.Context, id int64) (int32, er
 }
 
 const listAffectedAreas = `-- name: ListAffectedAreas :many
-SELECT id, ref_id, description, disaster_id, location,
-       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
-       latitude, longitude, severity, verification_status, report_count,
+SELECT a.id, a.ref_id, a.description, a.disaster_id, d.ref_id AS disaster_ref_id, a.location,
+       COALESCE(ST_AsGeoJSON(a.geom)::text, '') AS geometry,
+       a.latitude, a.longitude, a.severity, a.verification_status, a.report_count,
        COUNT(*) OVER() AS total_count
-FROM affected_areas
-ORDER BY created_at DESC
+FROM affected_areas a
+JOIN disasters d ON d.id = a.disaster_id
+ORDER BY a.created_at DESC
 LIMIT $1 OFFSET $2
 `
 
@@ -173,6 +177,7 @@ type ListAffectedAreasRow struct {
 	RefID              uuid.UUID                      `json:"ref_id"`
 	Description        *string                        `json:"description"`
 	DisasterID         int32                          `json:"disaster_id"`
+	DisasterRefID      uuid.UUID                      `json:"disaster_ref_id"`
 	Location           *string                        `json:"location"`
 	Geometry           interface{}                    `json:"geometry"`
 	Latitude           *float64                       `json:"latitude"`
@@ -197,6 +202,7 @@ func (q *Queries) ListAffectedAreas(ctx context.Context, arg ListAffectedAreasPa
 			&i.RefID,
 			&i.Description,
 			&i.DisasterID,
+			&i.DisasterRefID,
 			&i.Location,
 			&i.Geometry,
 			&i.Latitude,

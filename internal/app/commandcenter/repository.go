@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
@@ -20,7 +21,7 @@ var (
 type Repository interface {
 	Create(ctx context.Context, commandCenter *CommandCenter) error
 	GetByDisasterID(ctx context.Context, disasterID int32) (*CommandCenter, error)
-	DisasterExists(ctx context.Context, disasterID int32) (bool, error)
+	GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error)
 }
 
 type PostgresRepository struct {
@@ -83,15 +84,18 @@ func (r *PostgresRepository) GetByDisasterID(ctx context.Context, disasterID int
 	return &commandCenter, nil
 }
 
-// DisasterExists reports whether the parent disaster of a nested command center
-// lookup exists, so the service can tell an unknown disaster from a disaster
-// that simply has no command center yet.
-func (r *PostgresRepository) DisasterExists(ctx context.Context, disasterID int32) (bool, error) {
-	exists, err := r.queries.DisasterExists(ctx, disasterID)
+// GetDisasterIDByRefID resolves the public disaster reference id to its
+// internal id, so a nested command center lookup can tell an unknown disaster
+// from a disaster that simply has no command center yet.
+func (r *PostgresRepository) GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error) {
+	id, err := r.queries.GetDisasterIDByRefID(ctx, refID)
 	if err != nil {
-		return false, database.TranslateError(err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrDisasterNotFound
+		}
+		return 0, database.TranslateError(err)
 	}
-	return exists, nil
+	return id, nil
 }
 
 func commandCenterFromRow(

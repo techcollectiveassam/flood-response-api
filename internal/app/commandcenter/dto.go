@@ -1,7 +1,7 @@
 package commandcenter
 
 type CreateCommandCenterRequest struct {
-	DisasterID    int32  `json:"disaster_id" binding:"required"`
+	DisasterRefID string `json:"disaster_ref_id" binding:"required,uuid"`
 	Name          string `json:"name" binding:"required"`
 	Type          string `json:"type" binding:"required,oneof=government ngo group other"`
 	Description   string `json:"description"`
@@ -12,7 +12,7 @@ type CreateCommandCenterRequest struct {
 
 type CommandCenterResponse struct {
 	ID            int32  `json:"id"`
-	DisasterID    int32  `json:"disaster_id"`
+	DisasterRefID string `json:"disaster_ref_id"`
 	Name          string `json:"name"`
 	Type          string `json:"type"`
 	Description   string `json:"description,omitempty"`
@@ -24,7 +24,7 @@ type CommandCenterResponse struct {
 func toCommandCenterResponse(cc *CommandCenter) CommandCenterResponse {
 	return CommandCenterResponse{
 		ID:            cc.ID,
-		DisasterID:    cc.DisasterID,
+		DisasterRefID: cc.DisasterRefID.String(),
 		Name:          cc.Name,
 		Type:          cc.Type,
 		Description:   cc.Description,

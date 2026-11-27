@@ -65,7 +65,7 @@ func TestCreateDisaster(t *testing.T) {
 				}
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, int32(1), resp.ID)
+				assert.Equal(t, mockRefID, resp.RefID)
 				assert.Equal(t, tt.req.Name, resp.Name)
 				assert.Equal(t, tt.req.Type, resp.Type)
 				assert.Equal(t, StatusActive, resp.Status)
@@ -151,7 +151,7 @@ func TestGetDisaster(t *testing.T) {
 	}{
 		{
 			name:    "success",
-			get:     &Disaster{ID: 1, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
+			get:     &Disaster{ID: 1, RefID: mockRefID, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
 			wantErr: false,
 		},
 		{
@@ -172,7 +172,7 @@ func TestGetDisaster(t *testing.T) {
 			repo := &mockRepository{get: tt.get, getErr: tt.repoErr, getNotFound: tt.notFound}
 			svc := NewService(repo)
 
-			resp, err := svc.GetDisaster(context.Background(), 1)
+			resp, err := svc.GetDisaster(context.Background(), mockRefID)
 
 			if tt.wantErr {
 				assert.Error(t, err)

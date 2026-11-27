@@ -8,14 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testDisasterRefID = "11111111-1111-1111-1111-111111111111"
+
 func newTestService(repo *mockRepository) *Service {
 	return NewService(repo, NewAffectedAreaResolver())
 }
 
 func textRequest() CreateAffectedAreaRequest {
 	return CreateAffectedAreaRequest{
-		DisasterID: 1,
-		Severity:   "medium",
+		DisasterRefID: testDisasterRefID,
+		Severity:      "medium",
 		Location: &LocationPayload{
 			Source:      SourceText,
 			Description: "Village near the old bridge",
@@ -47,6 +49,10 @@ func TestCreateAffectedAreaTextSource(t *testing.T) {
 	assert.Equal(t, int64(1), area.ReportCount)
 	assert.Nil(t, area.Latitude)
 	assert.Nil(t, area.Longitude)
+	assert.Equal(t, int32(1), area.DisasterID)
+	assert.Equal(t, testDisasterRefID, area.DisasterRefID.String())
+	assert.Equal(t, 1, repo.resolveCalls)
+	assert.Equal(t, testDisasterRefID, repo.resolvedRefID.String())
 
 	report := repo.createdReport
 	assert.NotNil(t, report)
@@ -55,6 +61,33 @@ func TestCreateAffectedAreaTextSource(t *testing.T) {
 	assert.Equal(t, "medium", report.Severity)
 	assert.Empty(t, report.ReporterName)
 	assert.Empty(t, report.ReporterMobile)
+}
+
+func TestCreateAffectedAreaUnknownDisaster(t *testing.T) {
+	repo := &mockRepository{resolveErr: ErrDisasterNotFound}
+	svc := newTestService(repo)
+
+	result, err := svc.CreateAffectedArea(context.Background(), textRequest())
+
+	assert.ErrorIs(t, err, ErrDisasterNotFound)
+	assert.Nil(t, result)
+	assert.Equal(t, 1, repo.resolveCalls)
+	assert.Nil(t, repo.createdArea)
+}
+
+func TestCreateAffectedAreaInvalidDisasterRefID(t *testing.T) {
+	repo := &mockRepository{}
+	svc := newTestService(repo)
+
+	req := textRequest()
+	req.DisasterRefID = "not-a-uuid"
+
+	result, err := svc.CreateAffectedArea(context.Background(), req)
+
+	assert.ErrorIs(t, err, ErrInvalidDisasterRef)
+	assert.Nil(t, result)
+	assert.Equal(t, 0, repo.resolveCalls)
+	assert.Nil(t, repo.createdArea)
 }
 
 func TestUpdateAreaSeverity(t *testing.T) {

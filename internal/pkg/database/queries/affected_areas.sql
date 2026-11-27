@@ -45,17 +45,19 @@ WHERE id = $1
 RETURNING report_count;
 
 -- name: ListAffectedAreas :many
-SELECT id, ref_id, description, disaster_id, location,
-       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
-       latitude, longitude, severity, verification_status, report_count,
+SELECT a.id, a.ref_id, a.description, a.disaster_id, d.ref_id AS disaster_ref_id, a.location,
+       COALESCE(ST_AsGeoJSON(a.geom)::text, '') AS geometry,
+       a.latitude, a.longitude, a.severity, a.verification_status, a.report_count,
        COUNT(*) OVER() AS total_count
-FROM affected_areas
-ORDER BY created_at DESC
+FROM affected_areas a
+JOIN disasters d ON d.id = a.disaster_id
+ORDER BY a.created_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: GetAffectedAreaByRefID :one
-SELECT id, ref_id, description, disaster_id, location,
-       COALESCE(ST_AsGeoJSON(geom)::text, '') AS geometry,
-       latitude, longitude, severity, verification_status, report_count
-FROM affected_areas
-WHERE ref_id = $1;
+SELECT a.id, a.ref_id, a.description, a.disaster_id, d.ref_id AS disaster_ref_id, a.location,
+       COALESCE(ST_AsGeoJSON(a.geom)::text, '') AS geometry,
+       a.latitude, a.longitude, a.severity, a.verification_status, a.report_count
+FROM affected_areas a
+JOIN disasters d ON d.id = a.disaster_id
+WHERE a.ref_id = $1;

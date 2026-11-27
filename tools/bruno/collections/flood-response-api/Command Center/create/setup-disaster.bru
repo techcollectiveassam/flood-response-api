@@ -26,7 +26,7 @@ assert {
 tests {
   test("captures a disaster for command center requests", function() {
     const data = res.getBody().data;
-    expect(data).to.have.property('id');
-    bru.setEnvVar("commandCenterDisasterId", data.id);
+    expect(data).to.have.property('ref_id');
+    bru.setEnvVar("commandCenterDisasterId", data.ref_id);
   });
 }

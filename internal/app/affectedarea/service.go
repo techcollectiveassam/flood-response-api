@@ -9,6 +9,8 @@ import (
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 )
 
+var ErrInvalidDisasterRef = apperror.BadRequest("invalid_request_body", "disaster_ref_id must be a valid UUID")
+
 var severityRank = map[string]int{
 	"unknown":  0,
 	"low":      1,
@@ -32,7 +34,7 @@ func NewService(repository Repository, resolver *AffectedAreaResolver) *Service 
 func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedAreaRequest) (*CreateAffectedAreaResponse, error) {
 	logger := logging.FromContext(ctx)
 	logger.Debug("create affected area request",
-		"disaster_id", req.DisasterID,
+		"disaster_ref_id", req.DisasterRefID,
 		"severity", req.Severity,
 	)
 
@@ -43,7 +45,20 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 		return nil, err
 	}
 
-	resolved, err := s.resolver.Resolve(ctx, req.DisasterID, *req.Location)
+	refID, err := uuid.Parse(req.DisasterRefID)
+	if err != nil {
+		return nil, ErrInvalidDisasterRef
+	}
+
+	disasterID, err := s.repository.GetDisasterIDByRefID(ctx, refID)
+	if err != nil {
+		if apperror.HTTPStatus(err) >= 500 {
+			logger.Error("resolve disaster for affected area", "error", err)
+		}
+		return nil, err
+	}
+
+	resolved, err := s.resolver.Resolve(ctx, disasterID, *req.Location)
 	if err != nil {
 		if apperror.HTTPStatus(err) >= 500 {
 			logger.Error("resolve affected area", "error", err)
@@ -57,7 +72,7 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 	)
 
 	err = s.repository.WithTx(ctx, func(repository Repository) error {
-		area, err = s.matchOrCreateArea(ctx, repository, req, resolved)
+		area, err = s.matchOrCreateArea(ctx, repository, req, resolved, disasterID, refID)
 		if err != nil {
 			if apperror.HTTPStatus(err) >= 500 {
 				logger.Error("ensure affected area", "error", err)
@@ -88,7 +103,7 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 
 	if resolved.Decision == DecisionUncertain {
 		logger.Warn("affected area match uncertain; needs investigation",
-			"disaster_id", req.DisasterID,
+			"disaster_ref_id", req.DisasterRefID,
 			"confidence", resolved.Confidence,
 			"match_reason", resolved.MatchReason,
 		)
@@ -112,7 +127,7 @@ func (s *Service) CreateAffectedArea(ctx context.Context, req CreateAffectedArea
 	return result, nil
 }
 
-func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, req CreateAffectedAreaRequest, resolved *ResolvedArea) (*AffectedArea, error) {
+func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, req CreateAffectedAreaRequest, resolved *ResolvedArea, disasterID int32, disasterRefID uuid.UUID) (*AffectedArea, error) {
 	if resolved.Decision == DecisionMatched && resolved.Area != nil {
 		if severityHigher(req.Severity, resolved.Area.Severity) {
 			if err := repository.UpdateAreaSeverity(ctx, resolved.Area.ID, req.Severity); err != nil {
@@ -134,7 +149,8 @@ func (s *Service) matchOrCreateArea(ctx context.Context, repository Repository, 
 
 	area := &AffectedArea{
 		Description:        req.Description,
-		DisasterID:         req.DisasterID,
+		DisasterID:         disasterID,
+		DisasterRefID:      disasterRefID,
 		Location:           locationLabel(*req.Location),
 		Geometry:           locationGeometry(*req.Location),
 		Latitude:           req.Location.Latitude,

@@ -21,7 +21,7 @@ tests {
   test("returns the affected area details", function() {
     const data = res.getBody().data;
     expect(data).to.have.property('ref_id');
-    expect(data).to.have.property('disaster_id');
+    expect(data).to.have.property('disaster_ref_id');
     expect(data).to.have.property('severity');
     expect(data).to.have.property('verification_status');
     expect(data).to.have.property('report_count');

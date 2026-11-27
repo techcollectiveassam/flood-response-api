@@ -17,13 +17,14 @@ func setupRouter(handler *Handler) *gin.Engine {
 	router := gin.New()
 	router.POST("/disasters", handler.CreateDisaster)
 	router.GET("/disasters", handler.ListDisasters)
-	router.GET("/disasters/:id", handler.GetDisaster)
+	router.GET("/disasters/:ref_id", handler.GetDisaster)
 	return router
 }
 
 func TestToDisasterResponse(t *testing.T) {
 	d := &Disaster{
 		ID:          1,
+		RefID:       mockRefID,
 		Name:        "Assam Flood 2026",
 		Description: "Severe flooding",
 		Type:        "flood",
@@ -32,7 +33,7 @@ func TestToDisasterResponse(t *testing.T) {
 
 	resp := toDisasterResponse(d)
 
-	assert.Equal(t, d.ID, resp.ID)
+	assert.Equal(t, d.RefID.String(), resp.RefID)
 	assert.Equal(t, d.Name, resp.Name)
 	assert.Equal(t, d.Description, resp.Description)
 	assert.Equal(t, d.Type, resp.Type)
@@ -164,7 +165,8 @@ func TestCreateDisasterHandler(t *testing.T) {
 				}
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, float64(1), resp.Data["id"])
+				assert.Equal(t, mockRefID.String(), resp.Data["ref_id"])
+				assert.NotContains(t, resp.Data, "id")
 				assert.Equal(t, "Assam Flood 2026", resp.Data["name"])
 				assert.Equal(t, "flood", resp.Data["type"])
 				assert.Equal(t, "active", resp.Data["status"])
@@ -269,14 +271,14 @@ func TestGetDisasterHandler(t *testing.T) {
 	}{
 		{
 			name:       "success",
-			path:       "/disasters/1",
-			get:        &Disaster{ID: 1, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
+			path:       "/disasters/" + mockRefID.String(),
+			get:        &Disaster{ID: 1, RefID: mockRefID, Name: "Assam Flood 2026", Type: "flood", Status: "active"},
 			wantStatus: http.StatusOK,
 			wantErr:    false,
 		},
 		{
 			name:       "not found",
-			path:       "/disasters/999",
+			path:       "/disasters/99999999-9999-9999-9999-999999999999",
 			notFound:   true,
 			wantStatus: http.StatusNotFound,
 			wantCode:   "disaster_not_found",
@@ -291,7 +293,7 @@ func TestGetDisasterHandler(t *testing.T) {
 		},
 		{
 			name:       "service error",
-			path:       "/disasters/1",
+			path:       "/disasters/" + mockRefID.String(),
 			repoErr:    assert.AnError,
 			wantStatus: http.StatusInternalServerError,
 			wantCode:   "internal_error",
@@ -333,7 +335,8 @@ func TestGetDisasterHandler(t *testing.T) {
 				}
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
-				assert.Equal(t, float64(1), resp.Data["id"])
+				assert.Equal(t, mockRefID.String(), resp.Data["ref_id"])
+				assert.NotContains(t, resp.Data, "id")
 				assert.Equal(t, "Assam Flood 2026", resp.Data["name"])
 				assert.Equal(t, "flood", resp.Data["type"])
 				assert.Equal(t, "active", resp.Data["status"])

@@ -17,6 +17,7 @@ type mockRepository struct {
 	listErr             error
 	getByTrackingResult *SOS
 	getByTrackingErr    error
+	resolveErr          error
 
 	getByTrackingCalls  int
 	getByTrackingID     uuid.UUID
@@ -26,6 +27,8 @@ type mockRepository struct {
 	findDuplicateRadius float64
 	incrementCalls      int
 	createCalls         int
+	resolveCalls        int
+	resolvedRefID       uuid.UUID
 }
 
 func (m *mockRepository) Create(ctx context.Context, sos *SOS) error {
@@ -34,10 +37,18 @@ func (m *mockRepository) Create(ctx context.Context, sos *SOS) error {
 		return m.createErr
 	}
 	sos.ID = 1
-	sos.DisasterID = 7
 	sos.Status = StatusReported
 	sos.CreatedAt = time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
 	return nil
+}
+
+func (m *mockRepository) GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error) {
+	m.resolveCalls++
+	m.resolvedRefID = refID
+	if m.resolveErr != nil {
+		return 0, m.resolveErr
+	}
+	return 7, nil
 }
 
 func (m *mockRepository) FindDuplicate(ctx context.Context, disasterID int32, mobile, geometry string, radiusMeters float64) (*SOS, error) {

@@ -4,12 +4,6 @@ meta {
   seq: 2
 }
 
-script:pre-request {
-  if (!bru.getEnvVar("disasterId")) {
-    bru.setEnvVar("disasterId", 1);
-  }
-}
-
 post {
   url: {{baseUrl}}/api/v1/affected-areas
   body: json
@@ -18,7 +12,7 @@ post {
 
 body:json {
   {
-    "disaster_id": {{disasterId}},
+    "disaster_ref_id": "{{disasterRefId}}",
     "description": "Low lying settlement along the Brahmaputra",
     "location": {
       "source": "gps",

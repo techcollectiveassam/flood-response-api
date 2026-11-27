@@ -28,7 +28,7 @@ assert {
 tests {
   test("create returns the created disaster", function() {
     const data = res.getBody().data;
-    expect(data).to.have.property('id');
+    expect(data).to.have.property('ref_id');
     expect(data).to.have.property('name', 'Assam Flood');
     expect(data).to.have.property('description', 'Situation on the ground');
     expect(data).to.have.property('type', 'flood');
@@ -36,8 +36,8 @@ tests {
     expect(data).to.have.property('starts_at', '2026-09-17T00:00:00Z');
   });
 
-  test("captures the new disaster id", function() {
+  test("captures the new disaster ref_id", function() {
     const data = res.getBody().data;
-    bru.setEnvVar("disasterId", data.id);
+    bru.setEnvVar("disasterRefId", data.ref_id);
   });
 }

@@ -8,6 +8,7 @@ package sqlcgen
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -28,7 +29,7 @@ VALUES (
     COALESCE($5, CURRENT_TIMESTAMP),
     $6
 )
-RETURNING id, name, description, type, status, starts_at, ends_at
+RETURNING id, ref_id, name, description, type, status, starts_at, ends_at
 `
 
 type CreateDisasterParams struct {
@@ -42,6 +43,7 @@ type CreateDisasterParams struct {
 
 type CreateDisasterRow struct {
 	ID          int32              `json:"id"`
+	RefID       uuid.UUID          `json:"ref_id"`
 	Name        string             `json:"name"`
 	Description *string            `json:"description"`
 	Type        DisasterType       `json:"type"`
@@ -62,6 +64,7 @@ func (q *Queries) CreateDisaster(ctx context.Context, arg CreateDisasterParams) 
 	var i CreateDisasterRow
 	err := row.Scan(
 		&i.ID,
+		&i.RefID,
 		&i.Name,
 		&i.Description,
 		&i.Type,
@@ -72,14 +75,15 @@ func (q *Queries) CreateDisaster(ctx context.Context, arg CreateDisasterParams) 
 	return i, err
 }
 
-const getDisaster = `-- name: GetDisaster :one
-SELECT id, name, description, type, status, starts_at, ends_at
+const getDisasterByRefID = `-- name: GetDisasterByRefID :one
+SELECT id, ref_id, name, description, type, status, starts_at, ends_at
 FROM disasters
-WHERE id = $1
+WHERE ref_id = $1
 `
 
-type GetDisasterRow struct {
+type GetDisasterByRefIDRow struct {
 	ID          int32              `json:"id"`
+	RefID       uuid.UUID          `json:"ref_id"`
 	Name        string             `json:"name"`
 	Description *string            `json:"description"`
 	Type        DisasterType       `json:"type"`
@@ -88,11 +92,12 @@ type GetDisasterRow struct {
 	EndsAt      pgtype.Timestamptz `json:"ends_at"`
 }
 
-func (q *Queries) GetDisaster(ctx context.Context, id int32) (GetDisasterRow, error) {
-	row := q.db.QueryRow(ctx, getDisaster, id)
-	var i GetDisasterRow
+func (q *Queries) GetDisasterByRefID(ctx context.Context, refID uuid.UUID) (GetDisasterByRefIDRow, error) {
+	row := q.db.QueryRow(ctx, getDisasterByRefID, refID)
+	var i GetDisasterByRefIDRow
 	err := row.Scan(
 		&i.ID,
+		&i.RefID,
 		&i.Name,
 		&i.Description,
 		&i.Type,
@@ -103,14 +108,28 @@ func (q *Queries) GetDisaster(ctx context.Context, id int32) (GetDisasterRow, er
 	return i, err
 }
 
+const getDisasterIDByRefID = `-- name: GetDisasterIDByRefID :one
+SELECT id
+FROM disasters
+WHERE ref_id = $1
+`
+
+func (q *Queries) GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, getDisasterIDByRefID, refID)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const listDisasters = `-- name: ListDisasters :many
-SELECT id, name, description, type, status, starts_at, ends_at
+SELECT id, ref_id, name, description, type, status, starts_at, ends_at
 FROM disasters
 ORDER BY starts_at DESC
 `
 
 type ListDisastersRow struct {
 	ID          int32              `json:"id"`
+	RefID       uuid.UUID          `json:"ref_id"`
 	Name        string             `json:"name"`
 	Description *string            `json:"description"`
 	Type        DisasterType       `json:"type"`
@@ -130,6 +149,7 @@ func (q *Queries) ListDisasters(ctx context.Context) ([]ListDisastersRow, error)
 		var i ListDisastersRow
 		if err := rows.Scan(
 			&i.ID,
+			&i.RefID,
 			&i.Name,
 			&i.Description,
 			&i.Type,

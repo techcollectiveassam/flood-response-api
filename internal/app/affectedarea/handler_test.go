@@ -63,7 +63,7 @@ func TestCreateAffectedAreaValidationDetails(t *testing.T) {
 	assert.Equal(t, "invalid_request_body", resp.Error.Code)
 	assert.Equal(t, "validation error", resp.Error.Message)
 	assert.Equal(t, []apperror.Detail{
-		{Field: "disaster_id", Message: "disaster_id is required"},
+		{Field: "disaster_ref_id", Message: "disaster_ref_id is required"},
 		{Field: "location", Message: "location is required"},
 		{Field: "severity", Message: "severity is required"},
 	}, resp.Error.Details)
@@ -73,11 +73,13 @@ func TestToAffectedAreaResponse(t *testing.T) {
 	latitude := 26.1445
 	longitude := 91.7362
 	refID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	disasterRefID := uuid.MustParse(testDisasterRefID)
 	area := &AffectedArea{
 		ID:                 1,
 		RefID:              refID,
 		Description:        "Severe flooding",
 		DisasterID:         4,
+		DisasterRefID:      disasterRefID,
 		Location:           "Beltola, Guwahati",
 		Latitude:           &latitude,
 		Longitude:          &longitude,
@@ -90,7 +92,7 @@ func TestToAffectedAreaResponse(t *testing.T) {
 
 	assert.Equal(t, area.RefID.String(), resp.RefID)
 	assert.Equal(t, area.Description, resp.Description)
-	assert.Equal(t, area.DisasterID, resp.DisasterID)
+	assert.Equal(t, disasterRefID.String(), resp.DisasterRefID)
 	assert.Equal(t, area.Location, resp.Location)
 	assert.Equal(t, area.Latitude, resp.Latitude)
 	assert.Equal(t, area.Longitude, resp.Longitude)
@@ -118,8 +120,8 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 		{
 			name: "unknown severity",
 			body: CreateAffectedAreaRequest{
-				DisasterID: 1,
-				Severity:   "unknown",
+				DisasterRefID: testDisasterRefID,
+				Severity:      "unknown",
 				Location: &LocationPayload{
 					Source:      SourceText,
 					Description: "Village near the old bridge",
@@ -150,8 +152,8 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 		{
 			name: "invalid severity",
 			body: CreateAffectedAreaRequest{
-				DisasterID: 1,
-				Severity:   "urgent",
+				DisasterRefID: testDisasterRefID,
+				Severity:      "urgent",
 			},
 			repo:       &mockRepository{},
 			wantStatus: http.StatusBadRequest,
@@ -161,8 +163,8 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 		{
 			name: "invalid gps location",
 			body: CreateAffectedAreaRequest{
-				DisasterID: 1,
-				Severity:   "medium",
+				DisasterRefID: testDisasterRefID,
+				Severity:      "medium",
 				Location: &LocationPayload{
 					Source:    SourceGPS,
 					Latitude:  floatPointer(26.1445),
@@ -178,7 +180,7 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 			name: "disaster not found",
 			body: textRequest(),
 			repo: &mockRepository{
-				createAreaErr: ErrDisasterNotFound,
+				resolveErr: ErrDisasterNotFound,
 			},
 			wantStatus: http.StatusNotFound,
 			wantCode:   "disaster_not_found",
@@ -241,7 +243,8 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 				var resp struct {
 					Data struct {
 						AffectedArea struct {
-							RefID string `json:"ref_id"`
+							RefID         string `json:"ref_id"`
+							DisasterRefID string `json:"disaster_ref_id"`
 						} `json:"affected_area"`
 						Report struct {
 							RefID string `json:"ref_id"`
@@ -254,6 +257,7 @@ func TestCreateAffectedAreaHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.NotEmpty(t, resp.Data.AffectedArea.RefID)
+				assert.Equal(t, testDisasterRefID, resp.Data.AffectedArea.DisasterRefID)
 				assert.Equal(t, "66666666-6666-6666-6666-666666666666", resp.Data.Report.RefID)
 				assert.True(t, resp.Data.IsNewArea)
 				assert.Equal(t, MatchReasonUnmatchable, resp.Data.MatchReason)
@@ -269,6 +273,7 @@ func TestListAffectedAreasHandler(t *testing.T) {
 		RefID:              refID,
 		Description:        "Severe flooding",
 		DisasterID:         4,
+		DisasterRefID:      uuid.MustParse(testDisasterRefID),
 		Location:           "Beltola, Guwahati",
 		Severity:           "high",
 		VerificationStatus: StatusReported,
@@ -391,6 +396,7 @@ func TestGetAffectedAreaHandler(t *testing.T) {
 		RefID:              refID,
 		Description:        "Severe flooding",
 		DisasterID:         4,
+		DisasterRefID:      uuid.MustParse(testDisasterRefID),
 		Location:           "Beltola, Guwahati",
 		Severity:           "high",
 		VerificationStatus: StatusReported,
@@ -470,7 +476,7 @@ func TestGetAffectedAreaHandler(t *testing.T) {
 			var resp struct {
 				Data struct {
 					RefID              string `json:"ref_id"`
-					DisasterID         int32  `json:"disaster_id"`
+					DisasterRefID      string `json:"disaster_ref_id"`
 					Severity           string `json:"severity"`
 					VerificationStatus string `json:"verification_status"`
 					ReportCount        int64  `json:"report_count"`
@@ -479,7 +485,7 @@ func TestGetAffectedAreaHandler(t *testing.T) {
 			err := json.Unmarshal(w.Body.Bytes(), &resp)
 			assert.NoError(t, err)
 			assert.Equal(t, refID.String(), resp.Data.RefID)
-			assert.Equal(t, int32(4), resp.Data.DisasterID)
+			assert.Equal(t, testDisasterRefID, resp.Data.DisasterRefID)
 			assert.Equal(t, "high", resp.Data.Severity)
 			assert.Equal(t, StatusReported, resp.Data.VerificationStatus)
 			assert.Equal(t, int64(3), resp.Data.ReportCount)
