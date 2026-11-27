@@ -329,6 +329,7 @@ type Disaster struct {
 	EndsAt      pgtype.Timestamptz `json:"ends_at"`
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
+	RefID       uuid.UUID          `json:"ref_id"`
 }
 
 type SosRequest struct {

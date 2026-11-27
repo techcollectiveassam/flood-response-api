@@ -25,6 +25,7 @@ type Repository interface {
 	IncrementReportCount(ctx context.Context, id int64) error
 	ListAffectedAreas(ctx context.Context, page, limit int) ([]*AffectedArea, int64, error)
 	GetAffectedAreaByRefID(ctx context.Context, refID uuid.UUID) (*AffectedArea, error)
+	GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error)
 }
 
 type PostgresRepository struct {
@@ -55,6 +56,17 @@ func (r *PostgresRepository) WithTx(ctx context.Context, fn func(Repository) err
 	}
 
 	return database.TranslateError(tx.Commit(ctx))
+}
+
+func (r *PostgresRepository) GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error) {
+	id, err := r.queries.GetDisasterIDByRefID(ctx, refID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrDisasterNotFound
+		}
+		return 0, database.TranslateError(err)
+	}
+	return id, nil
 }
 
 func (r *PostgresRepository) CreateArea(ctx context.Context, area *AffectedArea) error {
@@ -145,6 +157,7 @@ func (r *PostgresRepository) ListAffectedAreas(ctx context.Context, page, limit 
 			RefID:              area.RefID,
 			Description:        database.TextValue(area.Description),
 			DisasterID:         area.DisasterID,
+			DisasterRefID:      area.DisasterRefID,
 			Location:           database.TextValue(area.Location),
 			Geometry:           database.GeometryToText(area.Geometry),
 			Latitude:           area.Latitude,
@@ -172,6 +185,7 @@ func (r *PostgresRepository) GetAffectedAreaByRefID(ctx context.Context, refID u
 		RefID:              result.RefID,
 		Description:        database.TextValue(result.Description),
 		DisasterID:         result.DisasterID,
+		DisasterRefID:      result.DisasterRefID,
 		Location:           database.TextValue(result.Location),
 		Geometry:           database.GeometryToText(result.Geometry),
 		Latitude:           result.Latitude,

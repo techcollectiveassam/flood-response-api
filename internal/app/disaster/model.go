@@ -1,6 +1,10 @@
 package disaster
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 const StatusActive = "active"
 
@@ -12,6 +16,7 @@ const (
 
 type Disaster struct {
 	ID          int32
+	RefID       uuid.UUID
 	Name        string
 	Description string
 	Type        string

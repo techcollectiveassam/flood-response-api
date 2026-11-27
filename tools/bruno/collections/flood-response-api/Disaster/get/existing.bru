@@ -4,15 +4,8 @@ meta {
   seq: 1
 }
 
-script:pre-request {
-  const disasterId = bru.getEnvVar("disasterId");
-  if (!disasterId) {
-    bru.setEnvVar("disasterId", 1);
-  }
-}
-
 get {
-  url: {{baseUrl}}/api/v1/disasters/{{disasterId}}
+  url: {{baseUrl}}/api/v1/disasters/{{disasterRefId}}
   body: none
   auth: none
 }
@@ -26,7 +19,7 @@ assert {
 tests {
   test("returns the disaster details", function() {
     const data = res.getBody().data;
-    expect(data).to.have.property('id');
+    expect(data).to.have.property('ref_id');
     expect(data).to.have.property('name');
     expect(data).to.have.property('type');
     expect(data).to.have.property('status');

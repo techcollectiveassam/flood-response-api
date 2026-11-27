@@ -51,17 +51,17 @@ type Reporter struct {
 }
 
 type CreateAffectedAreaRequest struct {
-	DisasterID  int32            `json:"disaster_id" binding:"required"`
-	Description string           `json:"description"`
-	Location    *LocationPayload `json:"location" binding:"required"`
-	Severity    string           `json:"severity" binding:"required,oneof=low medium high critical unknown"`
-	Reporter    *Reporter        `json:"reporter"`
+	DisasterRefID string           `json:"disaster_ref_id" binding:"required,uuid"`
+	Description   string           `json:"description"`
+	Location      *LocationPayload `json:"location" binding:"required"`
+	Severity      string           `json:"severity" binding:"required,oneof=low medium high critical unknown"`
+	Reporter      *Reporter        `json:"reporter"`
 }
 
 type AffectedAreaResponse struct {
 	RefID              string   `json:"ref_id"`
 	Description        string   `json:"description,omitempty"`
-	DisasterID         int32    `json:"disaster_id"`
+	DisasterRefID      string   `json:"disaster_ref_id"`
 	Location           string   `json:"location,omitempty"`
 	Geometry           string   `json:"geometry,omitempty"`
 	Latitude           *float64 `json:"latitude,omitempty"`
@@ -91,7 +91,7 @@ func toAffectedAreaResponse(area *AffectedArea) AffectedAreaResponse {
 	return AffectedAreaResponse{
 		RefID:              area.RefID.String(),
 		Description:        area.Description,
-		DisasterID:         area.DisasterID,
+		DisasterRefID:      area.DisasterRefID.String(),
 		Location:           area.Location,
 		Geometry:           area.Geometry,
 		Latitude:           area.Latitude,

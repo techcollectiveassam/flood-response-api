@@ -16,6 +16,7 @@ type AffectedArea struct {
 	RefID              uuid.UUID
 	Description        string
 	DisasterID         int32
+	DisasterRefID      uuid.UUID
 	Location           string
 	Geometry           string
 	Latitude           *float64

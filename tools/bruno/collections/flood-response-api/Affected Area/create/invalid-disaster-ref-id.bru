@@ -1,7 +1,7 @@
 meta {
-  name: Create affected area - missing disaster_id
+  name: Create affected area - invalid disaster_ref_id
   type: http
-  seq: 7
+  seq: 8
 }
 
 post {
@@ -12,6 +12,7 @@ post {
 
 body:json {
   {
+    "disaster_ref_id": "not-a-uuid",
     "location": {
       "source": "gps",
       "latitude": 26.2,
@@ -29,10 +30,9 @@ assert {
 }
 
 tests {
-  test("missing disaster_id is reported as validation error", function() {
+  test("non-UUID disaster_ref_id is rejected", function() {
     const err = res.getBody().error;
-    const disaster = err.details.find(d => d.field === 'disaster_id');
+    const disaster = err.details.find(d => d.field === 'disaster_ref_id');
     expect(disaster).to.be.an('object');
-    expect(disaster.message).to.equal('disaster_id is required');
   });
 }

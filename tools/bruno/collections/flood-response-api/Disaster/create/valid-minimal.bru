@@ -26,7 +26,7 @@ assert {
 tests {
   test("minimal request creates an active disaster", function() {
     const data = res.getBody().data;
-    expect(data).to.have.property('id');
+    expect(data).to.have.property('ref_id');
     expect(data).to.have.property('name', 'Guwahati Earthquake');
     expect(data).to.have.property('type', 'earthquake');
     expect(data).to.have.property('status', 'active');

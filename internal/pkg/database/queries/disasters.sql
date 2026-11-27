@@ -15,14 +15,19 @@ VALUES (
     COALESCE($5, CURRENT_TIMESTAMP),
     $6
 )
-RETURNING id, name, description, type, status, starts_at, ends_at;
+RETURNING id, ref_id, name, description, type, status, starts_at, ends_at;
 
 -- name: ListDisasters :many
-SELECT id, name, description, type, status, starts_at, ends_at
+SELECT id, ref_id, name, description, type, status, starts_at, ends_at
 FROM disasters
 ORDER BY starts_at DESC;
 
--- name: GetDisaster :one
-SELECT id, name, description, type, status, starts_at, ends_at
+-- name: GetDisasterByRefID :one
+SELECT id, ref_id, name, description, type, status, starts_at, ends_at
 FROM disasters
-WHERE id = $1;
+WHERE ref_id = $1;
+
+-- name: GetDisasterIDByRefID :one
+SELECT id
+FROM disasters
+WHERE ref_id = $1;

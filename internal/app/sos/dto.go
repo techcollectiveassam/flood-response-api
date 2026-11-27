@@ -5,7 +5,7 @@ import (
 )
 
 type CreateSOSRequest struct {
-	DisasterID     int32     `json:"disaster_id" binding:"required,gt=0"`
+	DisasterRefID  string    `json:"disaster_ref_id" binding:"required,uuid"`
 	ReporterMobile string    `json:"reporter_mobile"`
 	Message        string    `json:"message"`
 	Location       *Location `json:"location"`

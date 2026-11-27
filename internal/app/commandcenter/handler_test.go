@@ -8,22 +8,24 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 )
 
 func setupRouter(handler *Handler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	router.POST("/command-centers", handler.CreateCommandCenter)
-	router.GET("/disasters/:id/command-center", handler.GetCommandCenterByDisaster)
+	router.GET("/disasters/:ref_id/command-center", handler.GetCommandCenterByDisaster)
 	return router
 }
 
 func TestToCommandCenterResponse(t *testing.T) {
+	disasterRefID := uuid.MustParse(testDisasterRefID)
 	c := &CommandCenter{
 		ID:            1,
 		DisasterID:    2,
+		DisasterRefID: disasterRefID,
 		Name:          "Assam State Disaster Management",
 		Type:          TypeGovernment,
 		Description:   "State level coordination",
@@ -35,7 +37,7 @@ func TestToCommandCenterResponse(t *testing.T) {
 	resp := toCommandCenterResponse(c)
 
 	assert.Equal(t, c.ID, resp.ID)
-	assert.Equal(t, c.DisasterID, resp.DisasterID)
+	assert.Equal(t, c.DisasterRefID.String(), resp.DisasterRefID)
 	assert.Equal(t, c.Name, resp.Name)
 	assert.Equal(t, c.Type, resp.Type)
 	assert.Equal(t, c.Description, resp.Description)
@@ -48,6 +50,7 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 	tests := []struct {
 		name       string
 		body       interface{}
+		resolveErr error
 		repoErr    error
 		wantStatus int
 		wantCode   string
@@ -56,9 +59,9 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 		{
 			name: "success",
 			body: CreateCommandCenterRequest{
-				DisasterID: 1,
-				Name:       "Assam State Disaster Management",
-				Type:       TypeGovernment,
+				DisasterRefID: testDisasterRefID,
+				Name:          "Assam State Disaster Management",
+				Type:          TypeGovernment,
 			},
 			repoErr:    nil,
 			wantStatus: http.StatusCreated,
@@ -85,9 +88,21 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 		{
 			name: "invalid type",
 			body: CreateCommandCenterRequest{
-				DisasterID: 1,
-				Name:       "Unknown",
-				Type:       "corporation",
+				DisasterRefID: testDisasterRefID,
+				Name:          "Unknown",
+				Type:          "corporation",
+			},
+			repoErr:    nil,
+			wantStatus: http.StatusBadRequest,
+			wantCode:   "invalid_request_body",
+			wantErr:    true,
+		},
+		{
+			name: "invalid disaster ref id",
+			body: CreateCommandCenterRequest{
+				DisasterRefID: "not-a-uuid",
+				Name:          "Invalid Ref",
+				Type:          TypeNGO,
 			},
 			repoErr:    nil,
 			wantStatus: http.StatusBadRequest,
@@ -97,11 +112,11 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 		{
 			name: "unknown disaster",
 			body: CreateCommandCenterRequest{
-				DisasterID: 999999,
-				Name:       "Orphan Response",
-				Type:       TypeNGO,
+				DisasterRefID: "99999999-9999-9999-9999-999999999999",
+				Name:          "Orphan Response",
+				Type:          TypeNGO,
 			},
-			repoErr:    apperror.NotFound("disaster_not_found", "disaster not found"),
+			resolveErr: ErrDisasterNotFound,
 			wantStatus: http.StatusNotFound,
 			wantCode:   "disaster_not_found",
 			wantErr:    true,
@@ -109,9 +124,9 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 		{
 			name: "service error",
 			body: CreateCommandCenterRequest{
-				DisasterID: 1,
-				Name:       "Earthquake Response",
-				Type:       TypeNGO,
+				DisasterRefID: "33333333-3333-3333-3333-333333333333",
+				Name:          "Earthquake Response",
+				Type:          TypeNGO,
 			},
 			repoErr:    assert.AnError,
 			wantStatus: http.StatusInternalServerError,
@@ -122,7 +137,7 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			repo := &mockRepository{createErr: tt.repoErr}
+			repo := &mockRepository{createErr: tt.repoErr, resolveErr: tt.resolveErr}
 			svc := NewService(repo)
 			handler := NewHandler(svc)
 			router := setupRouter(handler)
@@ -166,7 +181,8 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, float64(1), resp.Data["id"])
-				assert.Equal(t, float64(1), resp.Data["disaster_id"])
+				assert.Equal(t, testDisasterRefID, resp.Data["disaster_ref_id"])
+				assert.NotContains(t, resp.Data, "disaster_id")
 				assert.Equal(t, "Assam State Disaster Management", resp.Data["name"])
 				assert.Equal(t, "government", resp.Data["type"])
 			}
@@ -175,6 +191,8 @@ func TestCreateCommandCenterHandler(t *testing.T) {
 }
 
 func TestGetCommandCenterByDisasterHandler(t *testing.T) {
+	successRefID := uuid.MustParse(testDisasterRefID)
+
 	tests := []struct {
 		name       string
 		path       string
@@ -185,8 +203,8 @@ func TestGetCommandCenterByDisasterHandler(t *testing.T) {
 	}{
 		{
 			name: "success",
-			path: "/disasters/2/command-center",
-			repo: &mockRepository{disasterExists: true, get: &CommandCenter{
+			path: "/disasters/" + testDisasterRefID + "/command-center",
+			repo: &mockRepository{get: &CommandCenter{
 				ID:            7,
 				DisasterID:    2,
 				Name:          "Volunteer Response Group",
@@ -202,7 +220,7 @@ func TestGetCommandCenterByDisasterHandler(t *testing.T) {
 			wantErr:    false,
 		},
 		{
-			name:       "non numeric id",
+			name:       "invalid ref id",
 			path:       "/disasters/abc/command-center",
 			repo:       &mockRepository{},
 			wantStatus: http.StatusBadRequest,
@@ -211,24 +229,24 @@ func TestGetCommandCenterByDisasterHandler(t *testing.T) {
 		},
 		{
 			name:       "no command center for disaster",
-			path:       "/disasters/4242/command-center",
-			repo:       &mockRepository{getErr: ErrCommandCenterNotFound, disasterExists: true},
+			path:       "/disasters/42424242-4242-4242-4242-424242424242/command-center",
+			repo:       &mockRepository{getErr: ErrCommandCenterNotFound},
 			wantStatus: http.StatusNotFound,
 			wantCode:   "command_center_not_found",
 			wantErr:    true,
 		},
 		{
 			name:       "unknown disaster",
-			path:       "/disasters/999999/command-center",
-			repo:       &mockRepository{disasterExists: false},
+			path:       "/disasters/99999999-9999-9999-9999-999999999999/command-center",
+			repo:       &mockRepository{resolveErr: ErrDisasterNotFound},
 			wantStatus: http.StatusNotFound,
 			wantCode:   "disaster_not_found",
 			wantErr:    true,
 		},
 		{
 			name:       "service error",
-			path:       "/disasters/3/command-center",
-			repo:       &mockRepository{disasterExists: true, getErr: assert.AnError},
+			path:       "/disasters/33333333-3333-3333-3333-333333333333/command-center",
+			repo:       &mockRepository{getErr: assert.AnError},
 			wantStatus: http.StatusInternalServerError,
 			wantCode:   "internal_error",
 			wantErr:    true,
@@ -269,12 +287,12 @@ func TestGetCommandCenterByDisasterHandler(t *testing.T) {
 				err := json.Unmarshal(w.Body.Bytes(), &resp)
 				assert.NoError(t, err)
 				assert.Equal(t, float64(7), resp.Data["id"])
-				assert.Equal(t, float64(2), resp.Data["disaster_id"])
+				assert.Equal(t, successRefID.String(), resp.Data["disaster_ref_id"])
+				assert.NotContains(t, resp.Data, "disaster_id")
 				assert.Equal(t, "Volunteer Response Group", resp.Data["name"])
 				assert.Equal(t, "group", resp.Data["type"])
 				assert.Equal(t, "Flood relief coordination", resp.Data["description"])
 				assert.Equal(t, "Ravi Das", resp.Data["contact_person"])
-				assert.Equal(t, int32(2), tt.repo.gotDisaster)
 			}
 		})
 	}

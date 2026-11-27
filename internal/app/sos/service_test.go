@@ -8,16 +8,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var testDisasterRefID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
 func TestCreateSOS(t *testing.T) {
 	tests := []struct {
 		name              string
 		req               CreateSOSRequest
 		findDuplicate     *SOS
 		findDuplicateErr  error
+		resolveErr        error
 		repoErr           error
 		wantErr           error
 		wantCreated       bool
 		wantFindDuplicate bool
+		wantResolveCalls  int
 		wantMobile        string
 		wantGeometry      string
 		wantRadius        float64
@@ -28,21 +32,23 @@ func TestCreateSOS(t *testing.T) {
 		{
 			name: "creates when no nearby match",
 			req: CreateSOSRequest{
-				DisasterID: 7,
-				Location:   location(26.18, 91.73),
+				DisasterRefID: testDisasterRefID.String(),
+				Location:      location(26.18, 91.73),
 			},
 			wantFindDuplicate: true,
+			wantResolveCalls:  1,
 			wantCreated:       true,
 			wantCreates:       1,
 		},
 		{
 			name: "merges into nearby match",
 			req: CreateSOSRequest{
-				DisasterID: 7,
-				Location:   location(26.18, 91.73),
+				DisasterRefID: testDisasterRefID.String(),
+				Location:      location(26.18, 91.73),
 			},
 			findDuplicate:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
 			wantFindDuplicate: true,
+			wantResolveCalls:  1,
 			wantCreated:       false,
 			wantIncrements:    1,
 			wantCreates:       0,
@@ -50,12 +56,13 @@ func TestCreateSOS(t *testing.T) {
 		{
 			name: "same mobile matches",
 			req: CreateSOSRequest{
-				DisasterID:     7,
+				DisasterRefID:  testDisasterRefID.String(),
 				ReporterMobile: "0000000000",
 				Location:       location(26.18, 91.73),
 			},
 			findDuplicate:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
 			wantFindDuplicate: true,
+			wantResolveCalls:  1,
 			wantMobile:        "0000000000",
 			wantGeometry:      `{"type":"Point","coordinates":[91.73,26.18]}`,
 			wantRadius:        100,
@@ -67,11 +74,12 @@ func TestCreateSOS(t *testing.T) {
 		{
 			name: "mobile only checks for duplicate",
 			req: CreateSOSRequest{
-				DisasterID:     7,
+				DisasterRefID:  testDisasterRefID.String(),
 				ReporterMobile: "0000000000",
 			},
 			findDuplicate:     &SOS{ID: 9, DisasterID: 7, ReportCount: 3},
 			wantFindDuplicate: true,
+			wantResolveCalls:  1,
 			wantMobile:        "0000000000",
 			wantRadius:        100,
 			checkQueryArgs:    true,
@@ -82,11 +90,12 @@ func TestCreateSOS(t *testing.T) {
 		{
 			name: "empty location with mobile creates without geometry",
 			req: CreateSOSRequest{
-				DisasterID:     7,
+				DisasterRefID:  testDisasterRefID.String(),
 				ReporterMobile: "0000000000",
 				Location:       &Location{},
 			},
 			wantFindDuplicate: true,
+			wantResolveCalls:  1,
 			wantMobile:        "0000000000",
 			wantCreated:       true,
 			wantCreates:       1,
@@ -94,53 +103,73 @@ func TestCreateSOS(t *testing.T) {
 		{
 			name: "missing mobile and location",
 			req: CreateSOSRequest{
-				DisasterID: 7,
+				DisasterRefID: testDisasterRefID.String(),
 			},
 			wantErr: ErrInvalidSOS,
 		},
 		{
 			name: "empty location object without mobile",
 			req: CreateSOSRequest{
-				DisasterID: 7,
-				Location:   &Location{},
+				DisasterRefID: testDisasterRefID.String(),
+				Location:      &Location{},
 			},
 			wantErr: ErrInvalidSOS,
 		},
 		{
 			name: "partial location",
 			req: CreateSOSRequest{
-				DisasterID: 7,
-				Location:   &Location{Latitude: fp(26.18)},
+				DisasterRefID: testDisasterRefID.String(),
+				Location:      &Location{Latitude: fp(26.18)},
 			},
 			wantErr: ErrInvalidLocation,
 		},
 		{
 			name: "out of range coordinate",
 			req: CreateSOSRequest{
-				DisasterID: 7,
-				Location:   location(95, 91.73),
+				DisasterRefID: testDisasterRefID.String(),
+				Location:      location(95, 91.73),
 			},
 			wantErr: ErrInvalidCoordinate,
 		},
 		{
+			name: "invalid disaster ref id",
+			req: CreateSOSRequest{
+				DisasterRefID: "not-a-uuid",
+				Location:      location(26.18, 91.73),
+			},
+			wantErr: ErrInvalidDisasterRef,
+		},
+		{
+			name: "unknown disaster",
+			req: CreateSOSRequest{
+				DisasterRefID: "99999999-9999-9999-9999-999999999999",
+				Location:      location(26.18, 91.73),
+			},
+			resolveErr:       ErrDisasterNotFound,
+			wantErr:          ErrDisasterNotFound,
+			wantResolveCalls: 1,
+		},
+		{
 			name: "find duplicate error",
 			req: CreateSOSRequest{
-				DisasterID: 7,
-				Location:   location(26.18, 91.73),
+				DisasterRefID: testDisasterRefID.String(),
+				Location:      location(26.18, 91.73),
 			},
 			findDuplicateErr:  assert.AnError,
 			wantErr:           assert.AnError,
 			wantFindDuplicate: true,
+			wantResolveCalls:  1,
 		},
 		{
 			name: "create repository error",
 			req: CreateSOSRequest{
-				DisasterID: 7,
-				Location:   location(26.18, 91.73),
+				DisasterRefID: testDisasterRefID.String(),
+				Location:      location(26.18, 91.73),
 			},
 			repoErr:           assert.AnError,
 			wantErr:           assert.AnError,
 			wantFindDuplicate: true,
+			wantResolveCalls:  1,
 			wantCreates:       1,
 		},
 	}
@@ -150,12 +179,17 @@ func TestCreateSOS(t *testing.T) {
 			repo := &mockRepository{
 				findDuplicateResult: tt.findDuplicate,
 				findDuplicateErr:    tt.findDuplicateErr,
+				resolveErr:          tt.resolveErr,
 				createErr:           tt.repoErr,
 			}
 			svc := NewService(repo, 100)
 
 			result, created, err := svc.CreateSOS(context.Background(), tt.req)
 
+			assert.Equal(t, tt.wantResolveCalls, repo.resolveCalls)
+			if tt.wantResolveCalls > 0 {
+				assert.Equal(t, tt.req.DisasterRefID, repo.resolvedRefID.String())
+			}
 			assert.Equal(t, tt.wantFindDuplicate, repo.findDuplicateCalled)
 			assert.Equal(t, tt.wantMobile, repo.findDuplicateMobile)
 			if tt.checkQueryArgs {
@@ -175,7 +209,7 @@ func TestCreateSOS(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantCreated, created)
 			if tt.wantCreated {
-				assert.Equal(t, tt.req.DisasterID, result.DisasterID)
+				assert.Equal(t, int32(7), result.DisasterID)
 			} else {
 				assert.Equal(t, int32(4), result.ReportCount)
 			}

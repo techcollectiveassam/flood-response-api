@@ -9,9 +9,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/database/sqlcgen"
 )
+
+var ErrDisasterNotFound = apperror.NotFound("disaster_not_found", "disaster not found")
 
 type Repository interface {
 	Create(ctx context.Context, sos *SOS) error
@@ -19,6 +22,7 @@ type Repository interface {
 	IncrementReportCount(ctx context.Context, id int64) (*SOS, error)
 	ListSOS(ctx context.Context, page, limit int) ([]*SOS, int64, error)
 	GetSOSByTrackingID(ctx context.Context, trackingID uuid.UUID) (*SOS, error)
+	GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error)
 }
 
 type PostgresRepository struct {
@@ -29,6 +33,17 @@ func NewRepository(pool *pgxpool.Pool) *PostgresRepository {
 	return &PostgresRepository{
 		queries: sqlcgen.New(pool),
 	}
+}
+
+func (r *PostgresRepository) GetDisasterIDByRefID(ctx context.Context, refID uuid.UUID) (int32, error) {
+	id, err := r.queries.GetDisasterIDByRefID(ctx, refID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrDisasterNotFound
+		}
+		return 0, database.TranslateError(err)
+	}
+	return id, nil
 }
 
 func (r *PostgresRepository) Create(ctx context.Context, sos *SOS) error {

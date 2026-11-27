@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/apperror"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/logging"
 	"github.com/techcollectiveassam/flood-response-api/internal/pkg/timeutil"
@@ -44,7 +45,7 @@ func (s *Service) CreateDisaster(ctx context.Context, req CreateDisasterRequest)
 		return nil, err
 	}
 
-	logger.Debug("disaster created", "id", d.ID)
+	logger.Debug("disaster created", "ref_id", d.RefID)
 	return d, nil
 }
 
@@ -63,19 +64,19 @@ func (s *Service) ListDisasters(ctx context.Context) ([]Disaster, error) {
 	return disasters, nil
 }
 
-func (s *Service) GetDisaster(ctx context.Context, id int32) (*Disaster, error) {
+func (s *Service) GetDisaster(ctx context.Context, refID uuid.UUID) (*Disaster, error) {
 	logger := logging.FromContext(ctx)
 
-	d, err := s.repository.GetByID(ctx, id)
+	d, err := s.repository.GetByRefID(ctx, refID)
 	if err != nil {
 		if errors.Is(err, ErrDisasterNotFound) {
-			logger.Warn("disaster not found", "id", id)
+			logger.Warn("disaster not found", "ref_id", refID)
 		} else if apperror.HTTPStatus(err) >= 500 {
-			logger.Error("get disaster", "id", id, "error", err)
+			logger.Error("get disaster", "ref_id", refID, "error", err)
 		}
 		return nil, err
 	}
 
-	logger.Debug("disaster found", "id", id)
+	logger.Debug("disaster found", "ref_id", refID)
 	return d, nil
 }

@@ -15,7 +15,7 @@ type CreateDisasterRequest struct {
 }
 
 type DisasterResponse struct {
-	ID          int32   `json:"id"`
+	RefID       string  `json:"ref_id"`
 	Name        string  `json:"name"`
 	Description string  `json:"description,omitempty"`
 	Type        string  `json:"type"`
@@ -26,7 +26,7 @@ type DisasterResponse struct {
 
 func toDisasterResponse(d *Disaster) DisasterResponse {
 	resp := DisasterResponse{
-		ID:          d.ID,
+		RefID:       d.RefID.String(),
 		Name:        d.Name,
 		Description: d.Description,
 		Type:        d.Type,

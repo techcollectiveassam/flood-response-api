@@ -12,7 +12,7 @@ post {
 
 body:json {
   {
-    "disaster_id": 999999,
+    "disaster_ref_id": "99999999-9999-9999-9999-999999999999",
     "location": {
       "source": "gps",
       "latitude": 26.2,
@@ -30,7 +30,7 @@ assert {
 }
 
 tests {
-  test("unknown disaster id returns a 404", function() {
+  test("unknown disaster ref_id returns a 404", function() {
     const err = res.getBody().error;
     expect(err).to.have.property('code', 'disaster_not_found');
     expect(err).to.have.property('message');
